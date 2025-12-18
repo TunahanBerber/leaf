@@ -1,0 +1,45 @@
+@import "./tokens.css";
+@import "./light.css";
+@import "./dark.css";
+@import "./motion.css";
+
+* { box-sizing: border-box; }
+
+html, body {
+    height: 100%;
+    margin: 0;
+    font-family: var(--font-sans);
+    background: var(--bg-gradient);
+    color: var(--text-1);
+}
+
+
+a { color: inherit; }
+
+.leaf-glass {
+    background: var(--surface-1);
+    border: var(--border-hairline) solid var(--stroke-2);
+    box-shadow: var(--shadow-1);
+    border-radius: var(--r-lg);
+    -webkit-backdrop-filter: blur(var(--blur-md));
+    backdrop-filter: blur(var(--blur-md));
+}
+
+.leaf-card {
+    background: var(--surface-1);
+    border: var(--border-hairline) solid var(--stroke-2);
+    box-shadow: var(--shadow-2);
+    border-radius: var(--r-lg);
+}
+
+.leaf-focus:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+}
+
+.leaf-press {
+    transition: transform var(--dur-1) var(--ease-out);
+}
+.leaf-press:active {
+    transform: scale(var(--press-scale));
+}

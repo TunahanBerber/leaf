@@ -1,0 +1,37 @@
+:root[data-theme="light"] {
+    color-scheme: light;
+
+    /* Background layers */
+    --bg: #f6f7f9;
+    --bg-elevated: rgba(255, 255, 255, 0.72);
+
+    /* Surface layers */
+    --surface-1: rgba(255, 255, 255, 0.78);
+    --surface-2: rgba(255, 255, 255, 0.64);
+    --surface-3: rgba(255, 255, 255, 0.52);
+
+    /* Text */
+    --text-1: rgba(12, 14, 18, 0.92);
+    --text-2: rgba(12, 14, 18, 0.70);
+    --text-3: rgba(12, 14, 18, 0.52);
+
+    /* Border (ince ve “ışık” gibi) */
+    --stroke-1: rgba(15, 18, 22, 0.10);
+    --stroke-2: rgba(15, 18, 22, 0.06);
+
+    /* Accent (Leaf calm) */
+    --accent: #2f7d5c;
+    --accent-weak: rgba(47, 125, 92, 0.14);
+
+    /* Focus ring */
+    --focus: rgba(47, 125, 92, 0.42);
+
+    --bg-top: #fafbfc;
+    --bg-bottom: #9abff1;
+
+    --bg-gradient: linear-gradient(
+            180deg,
+            var(--bg-top) 0%,
+            var(--bg-bottom) 100%
+    );
+}

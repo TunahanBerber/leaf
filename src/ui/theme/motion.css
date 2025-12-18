@@ -1,0 +1,12 @@
+:root {
+    --press-scale: 0.985;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --dur-1: 0ms;
+        --dur-2: 0ms;
+        --dur-3: 0ms;
+        --press-scale: 1;
+    }
+}

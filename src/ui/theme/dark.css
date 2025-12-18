@@ -1,0 +1,37 @@
+:root[data-theme="dark"] {
+    color-scheme: dark;
+
+    --bg: #0b0c0f;
+    --bg-elevated: rgba(18, 19, 24, 0.68);
+
+    --surface-1: rgba(24, 25, 31, 0.72);
+    --surface-2: rgba(24, 25, 31, 0.56);
+    --surface-3: rgba(24, 25, 31, 0.42);
+
+    --text-1: rgba(245, 246, 248, 0.92);
+    --text-2: rgba(245, 246, 248, 0.70);
+    --text-3: rgba(245, 246, 248, 0.52);
+
+    --stroke-1: rgba(245, 246, 248, 0.14);
+    --stroke-2: rgba(245, 246, 248, 0.08);
+
+    --accent: #49c08d;
+    --accent-weak: rgba(73, 192, 141, 0.18);
+
+    --focus: rgba(73, 192, 141, 0.45);
+
+    /* Dark mode’da shadow’lar daha hafif görünmeli (cam hissi için) */
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --shadow-2: 0 8px 28px rgba(0, 0, 0, 0.45);
+    --shadow-3: 0 18px 54px rgba(0, 0, 0, 0.52);
+
+    --bg-top: #000000;
+    --bg-bottom: #030b23;
+
+
+    --bg-gradient: linear-gradient(
+            180deg,
+            var(--bg-top) 0%,
+            var(--bg-bottom) 100%
+    )
+}
