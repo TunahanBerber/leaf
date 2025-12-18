@@ -1,0 +1,95 @@
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: var(--space-6);
+  animation: fadeIn 0.8s var(--ease-out) forwards;
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+@keyframes fadeIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.empty-state__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 88px;
+  height: 88px;
+  margin-bottom: var(--space-6);
+  color: var(--color-primary);
+  /* İkonun arkasındaki cam efekti, global theme'den geliyor */
+  border: var(--border-hairline) solid var(--border-subtle);
+  box-shadow: var(--shadow-regular);
+  border-radius: var(--radius-xlarge);
+  
+  /* İkonun arkasındaki bulanıklığı biraz daha artırdım ki ikon netleşsin */
+}
+
+.empty-state__icon svg {
+  width: 32px;
+  height: 32px;
+  opacity: 0.9;
+}
+
+.empty-state__title {
+  margin: 0;
+  margin-bottom: var(--space-2);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: var(--tracking-tight);
+}
+
+.empty-state__description {
+  margin: 0;
+  margin-bottom: var(--space-7);
+  font-size: var(--text-md);
+  color: var(--text-secondary);
+  line-height: var(--leading-normal);
+  /* Satır çok uzayıp gözü yormasın diye genişliği kıstım */
+}
+
+.empty-state__action {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--space-5);
+  height: 44px;
+  
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  
+  color: #fff;
+  background-color: var(--color-primary);
+  
+  border: none;
+  border-radius: var(--radius-large);
+  box-shadow: 0 4px 12px rgba(47, 125, 92, 0.25); /* Bunu şimdilik elimle yazdım, ilerde token'a bağlarım */
+  
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out), opacity var(--duration-fast);
+}
+
+.empty-state__action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(47, 125, 92, 0.35);
+}
+
+.empty-state__action:active {
+  transform: translateY(0) scale(0.96);
+  box-shadow: 0 2px 8px rgba(47, 125, 92, 0.2);
+  opacity: 0.9;
+}

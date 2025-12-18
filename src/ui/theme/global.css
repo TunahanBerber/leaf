@@ -3,43 +3,69 @@
 @import "./dark.css";
 @import "./motion.css";
 
-* { box-sizing: border-box; }
+* { box-sizing: border-box; } /* Kutu modelini düzelttim ki padding ekleyince patlamasın */
 
 html, body {
     height: 100%;
     margin: 0;
     font-family: var(--font-sans);
     background: var(--bg-gradient);
-    color: var(--text-1);
+    color: var(--text-primary);
 }
 
 
 a { color: inherit; }
 
-.leaf-glass {
-    background: var(--surface-1);
-    border: var(--border-hairline) solid var(--stroke-2);
-    box-shadow: var(--shadow-1);
-    border-radius: var(--r-lg);
-    -webkit-backdrop-filter: blur(var(--blur-md));
-    backdrop-filter: blur(var(--blur-md));
+/* Liquid Glass Utility Classes */
+/* Apple'ın Liquid Glass tasarım sisteminden ilham alarak hazırladım */
+/* Multiple shadow layers ile derinlik, backdrop-filter ile lensing efekti sağlıyor */
+
+/* Liquid Glass - küçük elemanlar için (butonlar, kontroller) */
+.glass {
+    background: var(--bg-primary);
+    border: var(--border-hairline) solid var(--border-subtle);
+    box-shadow: var(--shadow-glass-sm);
+    border-radius: var(--radius-large);
+    -webkit-backdrop-filter: blur(var(--blur-medium));
+    backdrop-filter: blur(var(--blur-medium));
 }
 
-.leaf-card {
-    background: var(--surface-1);
-    border: var(--border-hairline) solid var(--stroke-2);
-    box-shadow: var(--shadow-2);
-    border-radius: var(--r-lg);
+/* Liquid Glass - orta elemanlar için (kartlar, menüler) */
+.glass-md {
+    background: var(--bg-primary);
+    border: var(--border-hairline) solid var(--border-subtle);
+    box-shadow: var(--shadow-glass-md);
+    border-radius: var(--radius-large);
+    -webkit-backdrop-filter: blur(var(--blur-medium));
+    backdrop-filter: blur(var(--blur-medium));
 }
 
-.leaf-focus:focus-visible {
+/* Liquid Glass - büyük elemanlar için (sidebars, paneller) */
+.glass-lg {
+    background: var(--bg-primary);
+    border: var(--border-hairline) solid var(--border-subtle);
+    box-shadow: var(--shadow-glass-lg);
+    border-radius: var(--radius-xlarge);
+    -webkit-backdrop-filter: blur(var(--blur-large));
+    backdrop-filter: blur(var(--blur-large));
+}
+
+/* Eski card utility'si - geriye uyumluluk için tutuyorum */
+.card {
+    background: var(--bg-primary);
+    border: var(--border-hairline) solid var(--border-subtle);
+    box-shadow: var(--shadow-regular);
+    border-radius: var(--radius-large);
+}
+
+.u-focus:focus-visible {
     outline: 2px solid var(--focus);
     outline-offset: 2px;
 }
 
-.leaf-press {
-    transition: transform var(--dur-1) var(--ease-out);
+.u-press {
+    transition: transform var(--duration-fast) var(--ease-out);
 }
-.leaf-press:active {
+.u-press:active {
     transform: scale(var(--press-scale));
 }

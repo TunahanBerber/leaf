@@ -1,5 +1,5 @@
 :root {
-    /* Typography */
+    /* Yazı tiplerini burada topladım; sistem fontlarını önceliklendirdim ki cihazla bütünleşsin */
     --font-sans: ui-sans-serif, system-ui, -apple-system, "SF Pro Display", "SF Pro Text",
     "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
 
@@ -14,7 +14,7 @@
     --leading-normal: 1.45;
     --tracking-tight: -0.015em;
 
-    /* Spacing (8pt-ish, ama web için esnek) */
+    /* Boşluklar (8pt sistemine sadık kaldım ama web için biraz esneklik bıraktım) */
     --space-1: 4px;
     --space-2: 8px;
     --space-3: 12px;
@@ -24,30 +24,55 @@
     --space-7: 32px;
     --space-8: 40px;
 
-    /* Radius (Apple-soft) */
-    --r-sm: 10px;
-    --r-md: 14px;
-    --r-lg: 18px;
-    --r-xl: 24px;
+    /* Köşe Yuvarlaklıkları (Apple hissiyatı için biraz geniş tuttum) */
+    --radius-small: 10px;
+    --radius-medium: 14px;
+    --radius-large: 18px;
+    --radius-xlarge: 24px;
 
-    /* Border */
+    /* Sınır Çizgileri */
     --border-hairline: 1px;
 
-    /* Shadows (çok yumuşak; “ayırıcı” değil “derinlik”) */
-    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.06);
-    --shadow-2: 0 6px 20px rgba(0, 0, 0, 0.08);
-    --shadow-3: 0 12px 36px rgba(0, 0, 0, 0.10);
+    /* Gölgeler (Keskin çizgiler yerine yumuşak derinlikler hedefledim) */
+    --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.06);
+    --shadow-regular: 0 6px 20px rgba(0, 0, 0, 0.08);
+    --shadow-strong: 0 12px 36px rgba(0, 0, 0, 0.10);
 
-    /* Blur / Glass */
-    --blur-sm: 10px;
-    --blur-md: 16px;
-    --blur-lg: 24px;
+    /* Liquid Glass için çok katmanlı gölgeler (derinlik ve lensing efekti için) */
+    /* Küçük elemanlar için - hafif derinlik */
+    --shadow-glass-sm: 
+        0 1px 2px rgba(0, 0, 0, 0.04),
+        0 4px 8px rgba(0, 0, 0, 0.06);
+    
+    /* Orta elemanlar için - belirgin derinlik */
+    --shadow-glass-md: 
+        0 2px 4px rgba(0, 0, 0, 0.04),
+        0 8px 16px rgba(0, 0, 0, 0.06),
+        0 16px 32px rgba(0, 0, 0, 0.08);
+    
+    /* Büyük elemanlar için - derin, katmanlı görünüm (sidebars, paneller) */
+    --shadow-glass-lg: 
+        0 4px 8px rgba(0, 0, 0, 0.05),
+        0 12px 24px rgba(0, 0, 0, 0.07),
+        0 24px 48px rgba(0, 0, 0, 0.10);
 
-    /* Motion */
+    /* Buzlu Cam / Blur Efektleri */
+    --blur-small: 10px;
+    --blur-medium: 16px;
+    --blur-large: 24px;
+    
+    /* Liquid Glass için daha güçlü blur değerleri (büyük elemanlar için) */
+    --blur-xlarge: 32px;
+
+    /* Animasyonlar (Doğal ve akışkan hissettiren eğriler seçtim) */
     --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
     --ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
 
-    --dur-1: 120ms;
-    --dur-2: 180ms;
-    --dur-3: 260ms;
+    --duration-fast: 120ms;
+    --duration-regular: 180ms;
+    --duration-slow: 260ms;
+    
+    /* Liquid Glass için fluid motion (daha uzun, akıcı geçişler) */
+    --duration-slower: 320ms;
+    --duration-slowest: 400ms;
 }
