@@ -8,7 +8,7 @@
 html, body {
     height: 100%;
     margin: 0;
-    font-family: var(--font-sans);
+    font-family: var(--font-sans), sans-serif;
     background: var(--bg-gradient);
     color: var(--text-primary);
 }
