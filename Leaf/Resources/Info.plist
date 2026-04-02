@@ -18,10 +18,41 @@
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>1.0.0</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.tunahan.leaf</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.tunahan.leaf</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>Google Sign-In</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.948998031705-k92p4om7gbujmmrvflrps8vejqas5r4b</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>GIDClientID</key>
+	<string>948998031705-k92p4om7gbujmmrvflrps8vejqas5r4b.apps.googleusercontent.com</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Kapak fotoğraflarını kameranızla çekebilmeniz için erişim gereklidir.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Kitap kapaklarını galerinizden seçip ekleyebilmeniz için fotoğraf erişimine ihtiyaç vardır.</string>
+	<key>SENTRY_DSN</key>
+	<string>$(SENTRY_DSN)</string>
+	<key>SUPABASE_ANON_KEY</key>
+	<string>$(SUPABASE_ANON_KEY)</string>
+	<key>SUPABASE_URL</key>
+	<string>https://$(SUPABASE_DOMAIN)</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

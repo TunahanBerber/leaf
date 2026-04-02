@@ -1,78 +1,65 @@
 import SwiftUI
-import SwiftData
 
-// ana ekran — kitaplık boşsa EmptyState, doluysa grid gösterir
+enum MainTab: Int {
+    case library = 0
+    case wishlist = 1
+}
 
+// MARK: - Root View (Auth Gate)
+
+/// Kullanıcı giriş yapmamışsa AuthView, yapmışsa ana uygulama gösterilir
 struct ContentView: View {
-    @Query(sort: \Book.createdAt, order: .reverse) private var books: [Book]
-    @State private var showAddBook = false
-    @AppStorage("appTheme") private var appTheme: String = "system"
+    @EnvironmentObject private var auth: SupabaseAuthService
+    @EnvironmentObject private var store: BookStore
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                LeafGradientBackground()
-
-                if books.isEmpty {
-                    EmptyStateView { showAddBook = true }
-                } else {
-                    LibraryGridView(books: books)
-                }
-            }
-            .navigationTitle("Kitaplığım")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                // tema butonu — güneş / ay / otomatik
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        withAnimation(LeafMotion.regular) {
-                            // döngü: system → light → dark → system
-                            switch appTheme {
-                            case "system": appTheme = "light"
-                            case "light": appTheme = "dark"
-                            default: appTheme = "system"
-                            }
-                        }
-                    } label: {
-                        Image(systemName: themeIcon)
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundStyle(themeColor)
-                            .contentTransition(.symbolEffect(.replace))
+        Group {
+            if auth.isAuthenticated {
+                MainTabView()
+                    .environmentObject(auth)
+                    .environmentObject(store)
+                    .task {
+                        // Giriş yapılır yapılmaz tüm kitapları Supabase'den çek
+                        await store.fetchAll()
                     }
-                }
-
-                // kitap ekleme butonu
-                if !books.isEmpty {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button { showAddBook = true } label: {
-                            Image(systemName: "plus")
-                                .fontWeight(.semibold)
-                        }
-                        .tint(LeafColors.primaryLight)
-                    }
-                }
-            }
-            .sheet(isPresented: $showAddBook) {
-                AddBookView()
+            } else {
+                AuthView()
+                    .environmentObject(auth)
             }
         }
+        .animation(.easeInOut(duration: 0.3), value: auth.isAuthenticated)
     }
+}
 
-    // MARK: - Tema ikon ve renkleri
+// MARK: - Main Tab View
 
-    private var themeIcon: String {
-        switch appTheme {
-        case "light": "sun.max.fill"     // ☀️ açık tema
-        case "dark": "moon.fill"         // 🌙 koyu tema
-        default: "sparkles"              // ✨ sistem otomatik
+struct MainTabView: View {
+    @EnvironmentObject private var auth: SupabaseAuthService
+    @EnvironmentObject private var store: BookStore
+    @State private var selectedTab: MainTab = .library
+
+    var body: some View {
+        TabView(selection: $selectedTab) {
+
+            LibraryView()
+                .tabItem {
+                    Label("Kitaplığım", systemImage: "books.vertical.fill")
+                }
+                .tag(MainTab.library)
+
+            WishlistView()
+                .tabItem {
+                    Label("İstek Listesi", systemImage: "bookmark.fill")
+                }
+                .tag(MainTab.wishlist)
+
         }
+        .tint(LeafColors.primaryLight)
     }
+}
 
-    private var themeColor: Color {
-        switch appTheme {
-        case "light": .orange
-        case "dark": .indigo
-        default: LeafColors.primaryLight  // leaf yeşili — otomatik mod
-        }
-    }
+#Preview {
+    ContentView()
+        .environmentObject(SupabaseAuthService())
+        .environmentObject(BookStore())
 }

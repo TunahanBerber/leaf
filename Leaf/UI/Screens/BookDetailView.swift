@@ -1,31 +1,77 @@
 import SwiftUI
 
 // kitap detay ekranı — kapak, bilgi, okuma ilerlemesi, notlar
+// SwiftData yok; tüm işlemler BookStore üzerinden Supabase'e gider
 
 struct BookDetailView: View {
     @Environment(\.colorScheme) private var scheme
-    @Environment(\.modelContext) private var ctx
-    @Bindable var book: Book
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var store: BookStore
+
+    // Kitabın güncel hali store'dan okunur — local state değil
+    let bookId: String
 
     @State private var showAddNote = false
+    @State private var showEditBook = false
+    @State private var showDeleteConfirmation = false
     @State private var showEditPage = false
     @State private var pageText = ""
+
+    // Store'dan güncel kitabı bul
+    private var book: Book? {
+        store.books.first { $0.id == bookId }
+    }
+
+    init(book: Book) {
+        self.bookId = book.id
+    }
 
     var body: some View {
         ZStack {
             LeafGradientBackground()
-            ScrollView {
-                VStack(spacing: 0) {
-                    headerImage.padding(.bottom, LeafSpacing.lg)
-                    infoCard.padding(.horizontal, LeafSpacing.md).padding(.bottom, LeafSpacing.lg)
-                    progressCard.padding(.horizontal, LeafSpacing.md).padding(.bottom, LeafSpacing.lg)
-                    notesSection.padding(.horizontal, LeafSpacing.md).padding(.bottom, LeafSpacing.xxxl)
+            if let book {
+                content(book: book)
+            } else {
+                // Kitap silindiyse bu ekran kapanacak
+                ProgressView()
+            }
+        }
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(book?.title ?? "")
+        .task {
+            // Notları Supabase'den çek
+            if let book { await store.fetchNotes(for: book.id) }
+        }
+        .sheet(isPresented: $showAddNote) {
+            if let book { AddNoteView(bookId: book.id) }
+        }
+        .sheet(isPresented: $showEditBook) {
+            if let book { AddBookView(bookToEdit: book, isWishlist: book.isWishlist) }
+        }
+        .confirmationDialog("Silmek istediğine emin misin?", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
+            Button("Evet, Kitabı Sil", role: .destructive) {
+                if let book {
+                    dismiss()
+                    Task { await store.deleteBook(book) }
                 }
             }
-            .scrollIndicators(.hidden)
+            Button("Vazgeç", role: .cancel) {}
+        } message: {
+            Text("Son kararın mı? Bu kitap ve içindeki tüm notlar kalıcı olarak uçup gidecek.")
         }
-        .navigationTitle(book.title)
-        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    @ViewBuilder
+    private func content(book: Book) -> some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                headerImage(book: book).padding(.bottom, LeafSpacing.lg)
+                infoCard(book: book).padding(.horizontal, LeafSpacing.md).padding(.bottom, LeafSpacing.lg)
+                progressCard(book: book).padding(.horizontal, LeafSpacing.md).padding(.bottom, LeafSpacing.lg)
+                notesSection(book: book).padding(.horizontal, LeafSpacing.md).padding(.bottom, LeafSpacing.xxxl)
+            }
+        }
+        .scrollIndicators(.hidden)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button { showAddNote = true } label: {
@@ -33,17 +79,38 @@ struct BookDetailView: View {
                         .foregroundStyle(LeafColors.accent(for: scheme))
                 }
             }
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button { showEditBook = true } label: {
+                        Label("Düzenle", systemImage: "pencil")
+                    }
+                    Button(role: .destructive) { showDeleteConfirmation = true } label: {
+                        Label("Sil", systemImage: "trash")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .foregroundStyle(LeafColors.accent(for: scheme))
+                }
+            }
         }
-        .sheet(isPresented: $showAddNote) {
-            AddNoteView(book: book)
+        .alert("Sayfa Güncelle", isPresented: $showEditPage) {
+            TextField("Mevcut sayfa", text: $pageText).keyboardType(.numberPad)
+            Button("Güncelle") {
+                guard let p = Int(pageText) else { return }
+                var updated = book
+                updated.currentPage = min(p, book.totalPages)
+                Task { await store.updateBook(updated) }
+            }
+            Button("İptal", role: .cancel) {}
+        } message: {
+            Text("Şu an kaçıncı sayfadasınız?")
         }
     }
 
     // MARK: - Kapak Başlık
     @ViewBuilder
-    private var headerImage: some View {
+    private func headerImage(book: Book) -> some View {
         if let data = book.coverImageData, let img = UIImage(data: data) {
-            // görsel taşmasın diye genişliği ekrana kısıtladım
             GeometryReader { geo in
                 Image(uiImage: img)
                     .resizable()
@@ -54,6 +121,22 @@ struct BookDetailView: View {
             .frame(height: 280)
             .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: LeafRadius.xlarge, bottomTrailingRadius: LeafRadius.xlarge))
             .shadow(color: .black.opacity(0.15), radius: 20, y: 10)
+            .task {
+                // Kapak henüz bellekte yoksa Storage'dan indir
+                await store.loadCoverIfNeeded(for: book.id)
+            }
+        } else if book.coverImageUrl != nil {
+            // URL var ama kapak indiriliyor
+            ZStack {
+                LinearGradient(
+                    colors: [LeafColors.accent(for: scheme).opacity(0.12), LeafColors.accent(for: scheme).opacity(0.04)],
+                    startPoint: .topLeading, endPoint: .bottomTrailing
+                )
+                ProgressView().tint(LeafColors.accent(for: scheme))
+            }
+            .frame(height: 280)
+            .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: LeafRadius.xlarge, bottomTrailingRadius: LeafRadius.xlarge))
+            .task { await store.loadCoverIfNeeded(for: book.id) }
         } else {
             ZStack {
                 LinearGradient(
@@ -70,7 +153,7 @@ struct BookDetailView: View {
     }
 
     // MARK: - Bilgi Kartı
-    private var infoCard: some View {
+    private func infoCard(book: Book) -> some View {
         GlassCard {
             VStack(alignment: .leading, spacing: LeafSpacing.sm) {
                 Text(book.title)
@@ -91,7 +174,7 @@ struct BookDetailView: View {
     }
 
     // MARK: - İlerleme Kartı
-    private var progressCard: some View {
+    private func progressCard(book: Book) -> some View {
         GlassCard {
             VStack(spacing: LeafSpacing.sm) {
                 HStack {
@@ -130,22 +213,10 @@ struct BookDetailView: View {
             }
             .padding(LeafSpacing.md)
         }
-        .alert("Sayfa Güncelle", isPresented: $showEditPage) {
-            TextField("Mevcut sayfa", text: $pageText).keyboardType(.numberPad)
-            Button("Güncelle") {
-                if let p = Int(pageText) {
-                    book.currentPage = min(p, book.totalPages)
-                    book.updatedAt = .now
-                }
-            }
-            Button("İptal", role: .cancel) {}
-        } message: {
-            Text("Şu an kaçıncı sayfadasınız?")
-        }
     }
 
     // MARK: - Notlar
-    private var notesSection: some View {
+    private func notesSection(book: Book) -> some View {
         VStack(alignment: .leading, spacing: LeafSpacing.sm) {
             HStack {
                 Text("Notlarım").font(.system(size: 17, weight: .semibold)).foregroundStyle(LeafColors.textPrimary(for: scheme))
@@ -173,6 +244,13 @@ struct BookDetailView: View {
             } else {
                 ForEach(book.notes.sorted { $0.createdAt > $1.createdAt }) { note in
                     NoteCard(note: note)
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button(role: .destructive) {
+                                Task { await store.deleteNote(note) }
+                            } label: {
+                                Label("Sil", systemImage: "trash")
+                            }
+                        }
                 }
             }
         }
@@ -196,16 +274,14 @@ struct NoteCard: View {
                         Text("s. \(pg)")
                             .font(.system(size: 12))
                             .foregroundStyle(LeafColors.accent(for: scheme))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 2)
+                            .padding(.horizontal, 8).padding(.vertical, 2)
                             .background { Capsule().fill(LeafColors.accent(for: scheme).opacity(0.1)) }
                     }
                 }
                 Text(note.content)
                     .font(.system(size: 13))
                     .foregroundStyle(LeafColors.textSecondary(for: scheme))
-                    .lineLimit(4)
-                    .lineSpacing(3)
+                    .lineLimit(4).lineSpacing(3)
                 Text(note.createdAt, style: .relative)
                     .font(.system(size: 12))
                     .foregroundStyle(LeafColors.textTertiary(for: scheme))

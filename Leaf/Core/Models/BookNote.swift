@@ -1,24 +1,34 @@
 import Foundation
-import SwiftData
 
-// kitaba bağlı not modeli
-// başlık + içerik + opsiyonel sayfa numarası
+// Not modeli — SwiftData yok, tek kaynak Supabase
 
-@Model
-final class BookNote {
+struct BookNote: Identifiable, Hashable {
+    var id: String
+    var userId: String?
+    var bookId: String
     var title: String
     var content: String
     var pageNumber: Int?
     var createdAt: Date
     var updatedAt: Date
-    var book: Book?
 
-    init(title: String, content: String, pageNumber: Int? = nil, book: Book? = nil) {
+    init(
+        id: String = UUID().uuidString,
+        userId: String? = nil,
+        bookId: String,
+        title: String,
+        content: String,
+        pageNumber: Int? = nil,
+        createdAt: Date = .now,
+        updatedAt: Date = .now
+    ) {
+        self.id = id
+        self.userId = userId
+        self.bookId = bookId
         self.title = title
         self.content = content
         self.pageNumber = pageNumber
-        self.book = book
-        self.createdAt = .now
-        self.updatedAt = .now
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
     }
 }

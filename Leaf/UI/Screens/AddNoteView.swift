@@ -1,16 +1,20 @@
 import SwiftUI
 
 // not ekleme ekranı — sheet olarak açılıyor
+// SwiftData yok; not direkt BookStore üzerinden Supabase'e kaydedilir
 
 struct AddNoteView: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var ctx
     @Environment(\.colorScheme) private var scheme
+    @EnvironmentObject private var store: BookStore
 
-    let book: Book
+    // Kitabı ID üzerinden takip ediyoruz; struct olduğu için reference yok
+    let bookId: String
+
     @State private var title = ""
     @State private var content = ""
     @State private var pageNum = ""
+    @State private var isSaving = false
 
     var body: some View {
         NavigationStack {
@@ -18,10 +22,10 @@ struct AddNoteView: View {
                 LeafGradientBackground()
                 ScrollView {
                     VStack(spacing: LeafSpacing.md) {
-                        LeafTextField(title: "Not Başlığı", text: $title, placeholder: "Notunuza bir başlık verin")
-                        LeafTextField(title: "Sayfa Numarası", text: $pageNum, placeholder: "İsteğe bağlı", keyboard: .numberPad)
+                        LeafTextField(title: "Not Başlığı",     text: $title,   placeholder: "Notunuza bir başlık verin")
+                        LeafTextField(title: "Sayfa Numarası",  text: $pageNum, placeholder: "İsteğe bağlı", keyboard: .numberPad)
 
-                        // içerik alanı
+                        // İçerik alanı
                         VStack(alignment: .leading, spacing: LeafSpacing.xs) {
                             Text("Not İçeriği")
                                 .font(.system(size: 13, weight: .medium))
@@ -37,8 +41,7 @@ struct AddNoteView: View {
                                     Text("Notunuzu buraya yazın...")
                                         .font(.system(size: 15))
                                         .foregroundStyle(LeafColors.textTertiary(for: scheme))
-                                        .padding(.top, 8)
-                                        .padding(.leading, 5)
+                                        .padding(.top, 8).padding(.leading, 5)
                                         .allowsHitTesting(false)
                                 }
                             }
@@ -66,18 +69,32 @@ struct AddNoteView: View {
                         .foregroundStyle(LeafColors.textSecondary(for: scheme))
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Kaydet") { save() }
-                        .fontWeight(.semibold)
-                        .foregroundStyle(LeafColors.accent(for: scheme))
-                        .disabled(title.isEmpty || content.isEmpty)
+                    Button {
+                        Task { await save() }
+                    } label: {
+                        if isSaving {
+                            ProgressView().tint(LeafColors.accent(for: scheme))
+                        } else {
+                            Text("Kaydet").fontWeight(.semibold)
+                                .foregroundStyle(LeafColors.accent(for: scheme))
+                        }
+                    }
+                    .disabled(title.isEmpty || content.isEmpty || isSaving)
                 }
             }
         }
     }
 
-    private func save() {
-        let note = BookNote(title: title, content: content, pageNumber: Int(pageNum), book: book)
-        ctx.insert(note)
+    private func save() async {
+        isSaving = true
+        defer { isSaving = false }
+        // Direkt Supabase'e yaz; store hem DB'ye kaydeder hem books[idx].notes'a ekler
+        await store.addNote(
+            title: title,
+            content: content,
+            pageNumber: Int(pageNum),
+            to: bookId
+        )
         dismiss()
     }
 }

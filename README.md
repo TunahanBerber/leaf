@@ -1,156 +1,69 @@
-# 🍃 Leaf
+# Leaf 🌿
 
-Kişisel dijital kitaplık uygulaması. Kitaplarını ekle, okuma ilerlemeni takip et, notlarını al.
+Leaf, kitap okumayı ve kitaplarla ilgili düşünceleri organize etmeyi sevenler için geliştirilmiş, Apple ekosisteminin "cam/frosted" tasarım diline sahip minimalist ve **bulut tabanlı** bir dijital kitaplık uygulamasıdır.
 
-> Apple hissiyatı: sakin, premium, bağırmayan.  
-> Minimal ama soğuk değil.
-
-## Özellikler
-
-- 📚 **Kitap Ekleme** — Kapak görseli (fotoğraf seçici) + kitap bilgileri
-- 📖 **Kitaplık Grid** — İki sütunlu, cam efektli kartlarla kitap listesi
-- 📝 **Not Alma** — Her kitaba bağlı notlar, opsiyonel sayfa numarası ile
-- 📊 **Okuma İlerlemesi** — Sayfa takibi ve yüzde göstergesi
-- 💾 **Kalıcı Depolama** — SwiftData ile otomatik kaydetme
-- 🌗 **Light & Dark Mode** — Otomatik adaptasyon
+Mevcut sürüm, uygulamanın yalnızca bir prototip olmaktan çıkıp güvenli, hata toleranslı ve üretime (Production) hazır bulut mimarisine geçişini temsil eder. (SwiftData tamamen kaldırılmıştır.)
 
 ---
 
-## Tasarım Sistemi
+## 🏗 Mimari & Teknoloji Yığını
 
-Web projesindeki CSS token'larından birebir taşındı:
-
-| Token | Değer | Açıklama |
-|-------|-------|----------|
-| `LeafColors.primaryLight` | `#2f7d5c` | Sakin Leaf yeşili (light) |
-| `LeafColors.primaryDark` | `#49c08d` | Daha açık yeşil (dark) |
-| `LeafSpacing.md` | `16pt` | Temel boşluk (8pt grid) |
-| `LeafRadius.large` | `18pt` | Apple hissiyatı köşeler |
-| `LeafMotion.pressScale` | `0.96` | Basma efekti |
-
-### Liquid Glass Yaklaşımı
-
-- Yarı şeffaf yüzeyler (`ultraThinMaterial` + özel opacity)
-- Çok katmanlı gölgeler (derinlik hissi için)
-- İnce border çizgileri (0.5pt, neredeyse görünmez)
-- Abartısız — iOS/macOS Settings paneli hissiyatı
+*   **Platform:** iOS 17.0+
+*   **UI Çatısı:** SwiftUI
+*   **Proje Yönetimi:** Xcodegen (`project.yml`)
+*   **Backend & Veritabanı:** [Supabase](https://supabase.com/) (PostgreSQL & Storage)
+*   **Kimlik Doğrulama:** Supabase Auth (Email/Parola ve Google Sign-In Nonce akışıyla)
+*   **Hata Takibi:** [Sentry](https://sentry.io) (Crash reporting & performans)
+*   **Arama Servisi (3 Aşamalı):** 
+    1. Kendi yerel kataloğumuz (Supabase `book_catalog`)
+    2. Google Books API
+    3. OpenLibrary API
 
 ---
 
-## Proje Yapısı
+## 🚀 Kurulum (Developer Guide)
 
-```
-leaf/
-├── project.yml                    # XcodeGen proje tanımı
-├── Leaf.xcodeproj/                # Oluşturulan Xcode projesi
-│
-└── Leaf/
-    ├── App/
-    │   ├── LeafApp.swift          # Giriş noktası + SwiftData container
-    │   └── ContentView.swift      # Ana ekran (boş/dolu yönlendirme)
-    │
-    ├── Core/Models/
-    │   ├── Book.swift             # Kitap modeli (SwiftData)
-    │   └── BookNote.swift         # Not modeli (kitaba bağlı)
-    │
-    ├── UI/
-    │   ├── Theme/
-    │   │   ├── LeafColors.swift   # Renk tokenları (light/dark adaptive)
-    │   │   └── LeafTokens.swift   # Spacing, radius, motion sabitleri
-    │   │
-    │   ├── Components/
-    │   │   ├── GlassCard.swift              # Cam efektli kart bileşeni
-    │   │   ├── LeafGradientBackground.swift # Gradient arka plan
-    │   │   └── LeafComponents.swift         # TextField, PressStyle
-    │   │
-    │   └── Screens/
-    │       ├── EmptyStateView.swift    # Boş kitaplık ekranı
-    │       ├── LibraryGridView.swift   # Kitap grid görünümü
-    │       ├── AddBookView.swift       # Kitap ekleme formu
-    │       ├── BookDetailView.swift    # Kitap detay + notlar
-    │       └── AddNoteView.swift       # Not ekleme formu
-    │
-    └── Resources/
-        ├── Info.plist
-        └── Assets.xcassets/
-            ├── AppIcon.appiconset/
-            └── AccentColor.colorset/  # Leaf yeşili (adaptive)
-```
+Uygulamanın çalışması için .xcodeproj dosyası yerine `project.yml` kullanılır. Ortam ortam (Debug, Release, Staging) farklı konfigürasyonlara sahip olabilirsiniz.
 
----
+### 1. Gereksinimler
+- Xcode 15 veya üzeri
+- [Xcodegen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`)
+- CocoaPods / SPM gerekmez. Paketlenmiş Swift sınıfları (Supabase, Sentry, GID) doğrudan SPM tabanlı Xcodegen yapılandırmasından projeye çekilir.
 
-## Teknoloji
+### 2. Config ve Sırların (Secrets) Kurulumu
+Projedeki veritabanı url'si ve anahtarlar GitHub'a yüklenmez (`Config/Secrets.xcconfig`). Başlamak için:
+1. `Config/Secrets.xcconfig.example` dosyasını kopyalayıp aynı klasörde adını `Secrets.xcconfig` yapın.
+2. İçerisine kendi (veya test ekibinin sağladığı) Supabase URL ve Anon Key bilgilerini girin.
+   *(Not: `https://` çift slashları derleyici bozmasın diye `https:/$()/` formunda yazılır.)*
 
-| | |
-|---|---|
-| **Platform** | iOS 26+ |
-| **Dil** | Swift 6 |
-| **UI** | SwiftUI |
-| **Veri** | SwiftData |
-| **Proje Yönetimi** | XcodeGen |
-
----
-
-## Kurulum
-
-### Gereksinimler
-
-- Xcode 26+
-- macOS 26+
-- [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`)
-
-### Çalıştırma
-
+### 3. Projeyi Üretmek
+Terminali açın ve `leaf` klasörünün içinde çalıştırın:
 ```bash
-# projeyi klonla
-git clone <repo-url>
-cd leaf
-
-# xcode projesini oluştur
 xcodegen generate
-
-# xcode'da aç
-open Leaf.xcodeproj
 ```
+Bu işlem sana `Leaf.xcodeproj` dosyasını oluşturacaktır.
 
-Xcode'da **iPhone 17** simülatörünü seç ve ▶️ ile çalıştır.
-
-### Terminal'den çalıştırma
-
-```bash
-# build et
-xcodebuild -project Leaf.xcodeproj -scheme Leaf \
-  -destination 'platform=iOS Simulator,name=iPhone 17' build
-
-# simülatöre yükle ve çalıştır
-xcrun simctl boot "iPhone 17"
-xcrun simctl install booted <DerivedData-path>/Leaf.app
-xcrun simctl launch booted com.tunahan.leaf
-```
+### 4. Sentry DSN Eklemek
+Uygulama içine kendi Crash Monitoring akışını bağlamak için `LeafApp.swift` dosyası içindeki `init()` fonksiyonuna giderek Sentry DSN atanızı gerçekleştirin.
 
 ---
 
-## Mimari
+## 📦 Build & Release Yönetimi (TestFlight / App Store)
 
-```
-┌─────────────┐
-│   Screens   │  ← UI katmanı (SwiftUI View'ları)
-├─────────────┤
-│  Components │  ← Yeniden kullanılabilir bileşenler
-├─────────────┤
-│    Theme    │  ← Tasarım tokenları (renk, spacing, motion)
-├─────────────┤
-│    Models   │  ← Domain modelleri (SwiftData @Model)
-└─────────────┘
-```
+Leaf, sürümleri için `project.yml` içerisindeki `settings` yapısını baz alır:
+- **MARKETING_VERSION (`1.0.0`):** App Store'da görülecek son kullanıcı versiyonu.
+- **CURRENT_PROJECT_VERSION (`3`):** TestFlight / App Store Connect'e gönderilen ardışık Build Numarası.
+*Yeni bir TestFlight sürümü göndereceğinizde sadece `CURRENT_PROJECT_VERSION`'i artırıp tekrar `xcodegen generate` demeniz yeterlidir.*
 
-- **Screens** → Ekranlar, iş mantığı ve veri erişimi burada
-- **Components** → `GlassCard`, `LeafTextField`, `PressStyle` gibi tekrar kullanılanlar
-- **Theme** → Tüm tasarım kararları tek yerden yönetiliyor
-- **Models** → `Book` ve `BookNote`, SwiftData ile kalıcı
+### TestFlight Gönderimi:
+1. Xcode > Yansıtma Modunu **Any iOS Device (arm64)** olarak ayarlayın.
+2. `Product > Archive` yolunu izleyin. (Gerçek anahtarlar sadece Derleme alanına yansır, dışa sızmaz.)
+3. Derleme başarılı olunca `Distribute App` sekmesinden App Store Connect / TestFlight aktarımını başlatabilirsiniz.
 
 ---
 
-## Lisans
-
-MIT
+## 💡 Smoke Test Odakları (Cihaz Testleri)
+Production'a geçmeden cihazda denenmesi gereken kritik akışlar:
+1. **Google Login ve Sign Up:** Nonce akışı sorunsuz tamamlanıp Supabase Auth tetikleniyor mu?
+2. **Kapak Fotoğrafı Upload:** `book-covers` Supabase bucket'ına resim atılabiliyor ve yetki/büyük-küçük harf (`lowercased()`) takılması olmadan geri okunabiliyor mu?
+3. **Uçak Modunda Arama:** İnternet yokken yapılan aramaların *Exponential Backoff* sistemi ile uygulamayı dondurmadan tekrar deneyip "İnternet bağlantınızı kontrol edin" pop-upını düzgün çıkarttığından emin olun.

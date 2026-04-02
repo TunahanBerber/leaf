@@ -6,13 +6,18 @@ import SwiftUI
 struct EmptyStateView: View {
     @Environment(\.colorScheme) private var scheme
     @State private var visible = false
+    
+    var icon: String = "book"
+    var title: String = "Kitaplığınız şu anda boş"
+    var message: String = "Kitaplığınız boş — ve bu da iyi.\nİlk kitabınızı ekleyerek onu oluşturun."
+    var buttonText: String = "Kitap Ekle"
     var onAdd: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
             // cam efektli kitap ikonu kutusu
             GlassCard {
-                Image(systemName: "book")
+                Image(systemName: icon)
                     .font(.system(size: 32, weight: .light))
                     .foregroundStyle(LeafColors.accent(for: scheme))
                     .opacity(0.9)
@@ -20,22 +25,22 @@ struct EmptyStateView: View {
             }
             .padding(.bottom, LeafSpacing.xl)
 
-            Text("Kitaplığınız şu anda boş")
+            Text(title)
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(LeafColors.textPrimary(for: scheme))
                 .tracking(-0.3)
                 .padding(.bottom, LeafSpacing.xs)
 
-            Text("Kitaplığınız boş — ve bu da iyi.\nİlk kitabınızı ekleyerek onu oluşturun.")
+            Text(message)
                 .font(.system(size: 15))
                 .foregroundStyle(LeafColors.textSecondary(for: scheme))
                 .multilineTextAlignment(.center)
                 .lineSpacing(4)
                 .padding(.bottom, LeafSpacing.xxl)
 
-            // "Kitap Ekle" butonu
+            // Aksiyon butonu
             Button(action: onAdd) {
-                Text("Kitap Ekle")
+                Text(buttonText)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, LeafSpacing.lg)

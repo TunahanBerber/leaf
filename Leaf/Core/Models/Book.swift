@@ -1,39 +1,54 @@
 import Foundation
-import SwiftData
 
-// kitap modeli — SwiftData ile kalıcı depolama
-// kapak görseli, okuma ilerlemesi ve notlar taşıyor
+// Kitap modeli — SwiftData yok, tek kaynak Supabase
+// coverImageData sadece bellekte tutulur, persist edilmez
 
-@Model
-final class Book {
+struct Book: Identifiable, Hashable {
+    var id: String
+    var userId: String?
     var title: String
     var author: String
-    var coverImageData: Data?
+    var coverImageUrl: String?   // Storage'daki path: {userId}/{bookId}
+    var coverImageData: Data?    // Bellekte önbellek — Supabase'e gönderilmez
     var totalPages: Int
     var currentPage: Int
+    var isWishlist: Bool
     var createdAt: Date
     var updatedAt: Date
+    var notes: [BookNote]
 
-    // kitaba bağlı notlar
-    @Relationship(deleteRule: .cascade, inverse: \BookNote.book)
-    var notes: [BookNote] = []
-
-    // okuma yüzdesi
     var progress: Double {
         guard totalPages > 0 else { return 0 }
         return Double(currentPage) / Double(totalPages)
     }
-
     var hasStarted: Bool { currentPage > 0 }
     var isCompleted: Bool { totalPages > 0 && currentPage >= totalPages }
 
-    init(title: String, author: String, coverImageData: Data? = nil, totalPages: Int = 0, currentPage: Int = 0) {
+    init(
+        id: String = UUID().uuidString,
+        userId: String? = nil,
+        title: String,
+        author: String,
+        coverImageData: Data? = nil,
+        coverImageUrl: String? = nil,
+        totalPages: Int = 0,
+        currentPage: Int = 0,
+        isWishlist: Bool = false,
+        createdAt: Date = .now,
+        updatedAt: Date = .now,
+        notes: [BookNote] = []
+    ) {
+        self.id = id
+        self.userId = userId
         self.title = title
         self.author = author
         self.coverImageData = coverImageData
+        self.coverImageUrl = coverImageUrl
         self.totalPages = totalPages
         self.currentPage = currentPage
-        self.createdAt = .now
-        self.updatedAt = .now
+        self.isWishlist = isWishlist
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.notes = notes
     }
 }
