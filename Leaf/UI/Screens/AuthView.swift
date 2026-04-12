@@ -1,5 +1,5 @@
 // AuthView.swift
-// Leaf — Giriş & Kayıt Ekranı
+// giriş ve kayıt ekranı — email/şifre ve Google OAuth buradan çalışıyor
 
 import SwiftUI
 
@@ -7,7 +7,7 @@ import SwiftUI
 
 struct AuthView: View {
 
-    // ContentView tarafından environmentObject olarak sağlanır
+    // ContentView'dan environmentObject olarak geliyor
     @EnvironmentObject private var auth: SupabaseAuthService
     @Environment(\.colorScheme) private var scheme
     @Environment(\.openURL) private var openURL
@@ -24,11 +24,11 @@ struct AuthView: View {
             ScrollView {
                 VStack(spacing: 32) {
 
-                    // Logo & Başlık
+                    // logo ve başlık
                     VStack(spacing: 8) {
                         Image(systemName: "book.pages.fill")
                             .font(.system(size: 56))
-                            // Vurgu rengi: yeşil tonlarımıza ayak uydurur
+                            // tema rengine göre değişiyor
                             .foregroundStyle(LeafColors.accent(for: scheme))
 
                         Text("Leaf")
@@ -41,7 +41,7 @@ struct AuthView: View {
                     }
                     .padding(.top, 60)
 
-                    // Form kartı
+                    // form kartı
                     GlassCard {
                         VStack(spacing: 16) {
 
@@ -87,13 +87,13 @@ struct AuthView: View {
                                     } else {
                                         Text(isSignUp ? "Kayıt Ol" : "Giriş Yap")
                                             .font(.headline)
-                                            .foregroundStyle(.white) // Buton içi genel olarak beyaz iyidir ya da theme'e göre
+                                            .foregroundStyle(.white)
                                     }
                                 }
                             }
                             .disabled(auth.isLoading || email.isEmpty || password.isEmpty)
                             
-                            // Ayraç: "Veya"
+                            // "veya" ayracı
                             HStack {
                                 VStack { Divider().background(LeafColors.borderPrimary(for: scheme)) }
                                 Text("VEYA")
@@ -103,7 +103,7 @@ struct AuthView: View {
                             }
                             .padding(.vertical, 8)
 
-                            // Google ile Devam Et Butonu
+                            // Google ile giriş butonu
                             Button {
                                 Task {
                                     if let url = await auth.getOAuthLoginURL() {
@@ -122,7 +122,7 @@ struct AuthView: View {
                                 }
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 50)
-                                // Temaya göre cam hissiyatı
+                                // temaya göre cam hissi
                                 .background(LeafColors.surfacePrimary(for: scheme))
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
                                 .overlay(
@@ -135,7 +135,7 @@ struct AuthView: View {
                     }
                     .padding(.horizontal)
 
-                    // Kayıt / Giriş geçiş butonu
+                    // kayıt/giriş geçiş butonu
                     Button {
                         withAnimation(.spring(duration: 0.3)) {
                             isSignUp.toggle()
@@ -150,7 +150,7 @@ struct AuthView: View {
                         .foregroundStyle(LeafColors.textSecondary(for: scheme))
                     }
 
-                    // Şifremi unuttum
+                    // şifremi unuttum butonu — sadece giriş ekranında göster
                     if !isSignUp {
                         Button {
                             guard !email.isEmpty else {
@@ -181,8 +181,7 @@ struct AuthView: View {
 }
 
 // MARK: - Auth Text Field
-// LeafComponents.swift içindeki LeafTextField'dan farklı:
-// icon + isSecure desteği ekler, sadece AuthView'da kullanılır
+// LeafTextField'dan farklı — ikon ve güvenli alan desteği var, sadece burada kullanıyorum
 
 private struct AuthTextField: View {
     let placeholder: String

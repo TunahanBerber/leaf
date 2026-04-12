@@ -1,5 +1,5 @@
 // BookSearchSheet.swift
-// Leaf — Kitap adı yazınca OpenLibrary'den öneri getiren sheet
+// kitap adı veya yazar girilince Google Books + OpenLibrary'den öneri getiriyor
 
 import SwiftUI
 
@@ -16,12 +16,12 @@ struct BookSearchSheet: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Leaf gradient arka plan
+                // arka plan
                 LeafGradientBackground()
                     .ignoresSafeArea()
 
                 VStack(spacing: 0) {
-                    // Arama kutusu
+                    // arama kutusu
                     searchBar
                         .padding(.horizontal, LeafSpacing.md)
                         .padding(.top, LeafSpacing.sm)
@@ -30,7 +30,7 @@ struct BookSearchSheet: View {
                     Divider()
                         .opacity(0.15)
 
-                    // İçerik
+                    // içerik
                     contentArea
                 }
             }
@@ -111,7 +111,7 @@ struct BookSearchSheet: View {
     private var loadingView: some View {
         VStack {
             Spacer()
-            // sadece spinner — ne aradığını zaten biliyor kullanıcı
+            // sadece spinner koyuyorum — kullanıcı ne aradığını zaten biliyor
             ProgressView()
                 .scaleEffect(1.2)
                 .tint(LeafColors.primary)
@@ -190,7 +190,7 @@ struct BookSearchSheet: View {
     }
 }
 
-// MARK: - Press Button Style (ScrollView ile çakışmayan)
+// MARK: - Satır Buton Stili (ScrollView ile çakışmıyor)
 
 private struct SearchRowButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
@@ -209,10 +209,10 @@ struct BookSearchResultRow: View {
     var body: some View {
         Button(action: onSelect) {
             HStack(spacing: 14) {
-                // Kapak görseli — liste için küçük boyut (S) yeterli, çok daha hızlı yüklenir
+                // liste için küçük kapak yeterli, çok daha hızlı yükleniyor
                 CoverThumbnail(url: book.coverURL)
 
-                // Kitap bilgileri
+                // kitap bilgileri
                 VStack(alignment: .leading, spacing: 4) {
                     Text(book.title)
                         .font(.system(size: 15, weight: .semibold))
@@ -256,7 +256,7 @@ struct BookSearchResultRow: View {
     }
 }
 
-// MARK: - Kapak Küçük Resim
+// MARK: - Kapak Küçük Resmi
 
 struct CoverThumbnail: View {
     let url: URL?

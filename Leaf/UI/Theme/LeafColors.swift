@@ -1,8 +1,8 @@
 import SwiftUI
 
-// web'deki light.css ve dark.css renk tokenlarını burada topladım
-// her renk hem light hem dark modda farklı ton kullanıyor
-// adaptive yardımcı fonksiyonlar da var — colorScheme ile doğru rengi döner
+// light ve dark mod renk tokenlarını burada topladım
+// her renk her iki modda ayrı ton kullanıyor
+// en altta adaptive helper'lar var — colorScheme vererek doğru rengi alıyorsun
 
 enum LeafColors {
     // MARK: - Marka Renkleri
@@ -11,7 +11,6 @@ enum LeafColors {
     static let primaryDark = Color(red: 73/255, green: 192/255, blue: 141/255)
 
     // MARK: - Gradient Arka Plan
-    // web'deki --bg-top / --bg-bottom
     static let bgTopLight = Color(red: 250/255, green: 251/255, blue: 252/255)
     static let bgBottomLight = Color(red: 154/255, green: 191/255, blue: 241/255)
     static let bgTopDark = Color.black

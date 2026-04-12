@@ -1,7 +1,7 @@
 import SwiftUI
 
-// web'deki .u-press:active { transform: scale(0.96) } karşılığı
-// basıldığında hafif küçülme efekti veriyor
+// basıldığında hafifçe küçülüyor — native uygulama gibi hissettirmesi için
+// web'deki .u-press:active { transform: scale(0.96) } ile aynı mantık
 
 struct PressStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
@@ -12,7 +12,7 @@ struct PressStyle: ButtonStyle {
     }
 }
 
-// cam efektli, Apple hissiyatında input alanı
+// cam efektli input alanı — Apple tasarım diline uymak için böyle yaptım
 struct LeafTextField: View {
     @Environment(\.colorScheme) private var scheme
 

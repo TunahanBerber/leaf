@@ -1,6 +1,5 @@
 // SupabaseAuthService.swift
-// Leaf — Kullanıcı kimlik doğrulama servisi
-// Email/Password kayıt, giriş ve çıkış işlemlerini yönetir
+// tüm auth işlemleri buradan geçiyor — kayıt, giriş, çıkış, Google OAuth, şifre sıfırlama
 
 import Foundation
 import Supabase
@@ -10,25 +9,24 @@ import Supabase
 @MainActor
 final class SupabaseAuthService: ObservableObject {
 
-    // Giriş yapmış kullanıcı bilgisi
+    // aktif kullanıcı bilgisi
     @Published var currentUser: User?
 
-    // Giriş durumu — View'larda kullanmak için kolay erişim
+    // view'larda auth kontrolü için kullanıyoruz
     @Published var isAuthenticated = false
 
-    // İşlem yüklenme ve hata durumları
+    // yükleniyor ve hata durumları
     @Published var isLoading = false
     @Published var errorMessage: String?
 
     init() {
-        // Uygulama açılır açılmaz oturum dinlemeye başla
-        // Mevcut aktif oturum varsa otomatik tanır
+        // uygulama açıldığında hemen dinlemeye başla — daha önce giriş yapıldıysa otomatik algılar
         Task { await listenToAuthChanges() }
     }
 
     // MARK: - Auth State
 
-    /// Supabase auth durumunu anlık dinler (sign in / sign out / token yenileme)
+    // auth durumunu canlı dinliyor — giriş, çıkış ve token yenileme hepsini yakalıyor
     private func listenToAuthChanges() async {
         for await (_, session) in supabase.auth.authStateChanges {
             currentUser = session?.user
@@ -38,8 +36,7 @@ final class SupabaseAuthService: ObservableObject {
 
     // MARK: - Sign Up
 
-    /// Yeni kullanıcı kaydı oluşturur
-    /// Supabase email doğrulama aktifse kullanıcıya onay maili gider
+    // yeni hesap oluşturuyor — Supabase email doğrulama açıksa onay maili gidiyor
     func signUp(email: String, password: String) async {
         isLoading = true
         errorMessage = nil
@@ -54,7 +51,7 @@ final class SupabaseAuthService: ObservableObject {
 
     // MARK: - Sign In
 
-    /// Email ve şifre ile giriş yapar
+    // email + şifre ile giriş
     func signIn(email: String, password: String) async {
         isLoading = true
         errorMessage = nil
@@ -69,7 +66,7 @@ final class SupabaseAuthService: ObservableObject {
 
     // MARK: - Sign Out
 
-    /// Mevcut oturumu kapatır
+    // oturumu kapatıyor
     func signOut() async {
         errorMessage = nil
         do {
@@ -81,8 +78,7 @@ final class SupabaseAuthService: ObservableObject {
 
     // MARK: - Google Sign In (OAuth Web Flow)
 
-    /// Native SDK yerine, doğrudan Supabase'in güvenli Web Flow'unu kullanır (URL döndürür).
-    /// Nonce akışı ve her türlü güvenlik önlemi Supabase Edge sunucularında otomatik yönetilir.
+    // Google OAuth için Supabase'in web akışını kullanıyorum — nonce ve güvenlik Supabase'de halloluyor
     func getOAuthLoginURL() async -> URL? {
         isLoading = true
         errorMessage = nil
@@ -100,18 +96,18 @@ final class SupabaseAuthService: ObservableObject {
 
     // MARK: - Deep Link Handler
 
-    /// LeafApp'ten çağrılır — gerekirse web OAuth fallback için
+    // LeafApp'ten çağrılıyor — OAuth dönüş URL'ini yakalıyor
     func handleDeepLink(_ url: URL) async {
         do {
             try await supabase.auth.session(from: url)
         } catch {
-            // deep link auth hatası — sessizce geç
+            // deep link hatası olursa sessizce geç, kullanıcıya gösterme
         }
     }
 
     // MARK: - Password Reset
 
-    /// Şifre sıfırlama maili gönderir
+    // şifre sıfırlama maili gönderiyor
     func resetPassword(email: String) async {
         isLoading = true
         errorMessage = nil
@@ -126,7 +122,7 @@ final class SupabaseAuthService: ObservableObject {
 
     // MARK: - Error Mapping
 
-    /// Ham auth hatalarını kullanıcı dostu Türkçe mesajlara çevirir
+    // Supabase'den gelen kaba hata mesajlarını Türkçe'ye çeviriyorum
     private func mapAuthError(_ error: Error) -> String {
         let message = error.localizedDescription.lowercased()
         if message.contains("invalid login credentials") || message.contains("invalid_credentials") {

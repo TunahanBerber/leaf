@@ -1,5 +1,5 @@
 // NetworkHelper.swift
-// Leaf — Ağ Hataları için Yük Devredici (Retry & Backoff)
+// ağ hataları için yeniden deneme mantığı — exponential backoff ile
 
 import Foundation
 
@@ -19,12 +19,8 @@ enum NetworkError: Error, LocalizedError {
 
 actor NetworkHelper {
     
-    /// Exponential backoff ile ağ isteklerini yeniden dener
-    /// - Parameters:
-    ///   - maxRetries: Maksimum deneme sayısı
-    ///   - initialDelay: İlk hata sonrası bekleme süresi (saniye)
-    ///   - backoffFactor: Bekleme süresinin ne kadar kat kat artacağı
-    ///   - operation: Yapılacak ağ isteği closure'u
+    // hatalı istekleri otomatik tekrarlıyor, her seferinde bekleme süresini katlıyor
+    // maxRetries: toplam deneme sayısı, initialDelay: ilk bekleme (sn), backoffFactor: artış çarpanı
     static func retry<T>(
         maxRetries: Int = 3,
         initialDelay: TimeInterval = 1.0,
@@ -45,7 +41,7 @@ actor NetworkHelper {
                     throw NetworkError.maxRetriesReached(lastError: error)
                 }
                 
-                // Exponential backoff
+                // bir sonraki denemeye kadar bekle
                 try? await Task.sleep(nanoseconds: UInt64(currentDelay * 1_000_000_000))
                 
                 retries += 1

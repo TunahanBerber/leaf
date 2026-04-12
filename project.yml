@@ -19,6 +19,22 @@ packages:
     url: https://github.com/getsentry/sentry-cocoa
     from: "8.21.0"
 
+schemes:
+  Leaf:
+    build:
+      targets:
+        Leaf: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
+
 targets:
   Leaf:
     type: application

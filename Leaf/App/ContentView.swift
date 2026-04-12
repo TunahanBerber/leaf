@@ -7,7 +7,7 @@ enum MainTab: Int {
 
 // MARK: - Root View (Auth Gate)
 
-/// Kullanıcı giriş yapmamışsa AuthView, yapmışsa ana uygulama gösterilir
+// giriş kontrolü buradan geçiyor — oturum varsa ana ekran, yoksa giriş sayfası açılıyor
 struct ContentView: View {
     @EnvironmentObject private var auth: SupabaseAuthService
     @EnvironmentObject private var store: BookStore
@@ -19,7 +19,7 @@ struct ContentView: View {
                     .environmentObject(auth)
                     .environmentObject(store)
                     .task {
-                        // Giriş yapılır yapılmaz tüm kitapları Supabase'den çek
+                        // giriş olunca hemen kitapları çek
                         await store.fetchAll()
                     }
             } else {

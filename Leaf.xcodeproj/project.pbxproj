@@ -24,9 +24,11 @@
 		65DFF577427C5FBECE6027AE /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C64DBCF8A34357B20E67FAE8 /* LibraryView.swift */; };
 		80623FE84BDF07A07D3FF278 /* BookSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE5A5F17A5741835E42F3928 /* BookSearchView.swift */; };
 		8F65624276FFCF4E2ACB8ACD /* NetworkHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 085D396B5556D97DF6B1F83E /* NetworkHelper.swift */; };
-		91A9C7E442AB4BA7C9170FD4 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2A654C4362EDCB2A4403423 /* ContentView.swift */; };
+		96A8D3DC2F854922001C264F /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2A654C4362EDCB2A4403423 /* ContentView.swift */; };
 		9D40A3537C5631E0DCB78902 /* BookStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED6E106B22E444D42C6AFC0A /* BookStore.swift */; };
+		9E3131AF0263FC6BC60B73D0 /* CoverImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEB1D879C2F4C29FEB678566 /* CoverImageView.swift */; };
 		A592ECA93DAAB8EEBC75B8C4 /* BookDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D74E6ECDE26CCF8692B9F248 /* BookDetailView.swift */; };
+		AA1B2C3D4E5F6A7B8C9D0E1F /* BookRecommendationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2C3D4E5F6A7B8C9D0E1F2A /* BookRecommendationSheet.swift */; };
 		BF9AD710D9D7207D01E83A92 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D131E2722C9707B0B0486726 /* Assets.xcassets */; };
 		BFDFEA252462C6C147479AF6 /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4152A273FD81613992DF338A /* EmptyStateView.swift */; };
 		D18ABDD8BA891CA52B93A435 /* OpenLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9AD3061DFBC03FB3BD51AE5 /* OpenLibraryService.swift */; };
@@ -51,9 +53,11 @@
 		9757D30E4473E8E99771EA8D /* AddNoteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddNoteView.swift; sourceTree = "<group>"; };
 		A2A654C4362EDCB2A4403423 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		AE80BFC06CE6E477ACAE74B3 /* Book.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Book.swift; sourceTree = "<group>"; };
+		AEB1D879C2F4C29FEB678566 /* CoverImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverImageView.swift; sourceTree = "<group>"; };
 		AF5F58CE52F17D5D8E4FEFA2 /* LeafColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeafColors.swift; sourceTree = "<group>"; };
 		B94D5CE82BAA5FC04FADE7B1 /* LeafGradientBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeafGradientBackground.swift; sourceTree = "<group>"; };
 		BA5FCA73E91A8FF71E3F51C6 /* LeafApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeafApp.swift; sourceTree = "<group>"; };
+		BB2C3D4E5F6A7B8C9D0E1F2A /* BookRecommendationSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookRecommendationSheet.swift; sourceTree = "<group>"; };
 		C64DBCF8A34357B20E67FAE8 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		CE5A5F17A5741835E42F3928 /* BookSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookSearchView.swift; sourceTree = "<group>"; };
 		CFF7D276740E9B0B7B9B0C02 /* LeafComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeafComponents.swift; sourceTree = "<group>"; };
@@ -96,6 +100,7 @@
 				9757D30E4473E8E99771EA8D /* AddNoteView.swift */,
 				40AF0594D1EDCDA0EFCD2BF4 /* AuthView.swift */,
 				D74E6ECDE26CCF8692B9F248 /* BookDetailView.swift */,
+				BB2C3D4E5F6A7B8C9D0E1F2A /* BookRecommendationSheet.swift */,
 				CE5A5F17A5741835E42F3928 /* BookSearchView.swift */,
 				4152A273FD81613992DF338A /* EmptyStateView.swift */,
 				948F528300F3F66DDD01C7E7 /* LibraryGridView.swift */,
@@ -136,6 +141,7 @@
 		2CA3E3EF4182FB398B741CF6 /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				AEB1D879C2F4C29FEB678566 /* CoverImageView.swift */,
 				7A08637AB0704D1D8DB7F943 /* GlassCard.swift */,
 				CFF7D276740E9B0B7B9B0C02 /* LeafComponents.swift */,
 				B94D5CE82BAA5FC04FADE7B1 /* LeafGradientBackground.swift */,
@@ -190,6 +196,7 @@
 				29297EC67F0B2D66153E1A13 /* Products */,
 			);
 			sourceTree = "<group>";
+			usesTabs = 0;
 		};
 		E3A1F686A2429F84170D7F79 /* Core */ = {
 			isa = PBXGroup;
@@ -219,7 +226,6 @@
 				44EE57EB42AF40CA404463E3 /* Sources */,
 				C98ACB3B0B18156D83E0604B /* Resources */,
 				CCC0F7F03E43887054E5D480 /* Frameworks */,
-				8DAA286B1651403B824B37CA /* Upload Debug Symbols to Sentry */,
 			);
 			buildRules = (
 			);
@@ -241,7 +247,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1430;
+				LastUpgradeCheck = 2640;
 			};
 			buildConfigurationList = 1A2A2803F75CC9E06E126F21 /* Build configuration list for PBXProject "Leaf" */;
 			developmentRegion = en;
@@ -277,38 +283,22 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
-/* Begin PBXShellScriptBuildPhase section */
-		8DAA286B1651403B824B37CA /* Upload Debug Symbols to Sentry */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${TARGET_NAME}",
-			);
-			name = "Upload Debug Symbols to Sentry";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# This script is responsible for uploading debug symbols and source context for Sentry.\nif which sentry-cli >/dev/null; then\n  export SENTRY_ORG=leaf-63\n  export SENTRY_PROJECT=apple-ios\n  ERROR=$(sentry-cli debug-files upload --include-sources \"$DWARF_DSYM_FOLDER_PATH\" 2>&1 >/dev/null)\n  if [ ! $? -eq 0 ]; then\n    echo \"warning: sentry-cli - $ERROR\"\n  fi\nelse\n  echo \"warning: sentry-cli not installed, download from https://github.com/getsentry/sentry-cli/releases\"\nfi\n";
-		};
-/* End PBXShellScriptBuildPhase section */
-
 /* Begin PBXSourcesBuildPhase section */
 		44EE57EB42AF40CA404463E3 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				59EFF571C0CA45AE90736934 /* AddBookView.swift in Sources */,
+				96A8D3DC2F854922001C264F /* ContentView.swift in Sources */,
 				509A85CBBE09ADCD4B3A01E0 /* AddNoteView.swift in Sources */,
 				31E7D82B24AF5AA82BBC51F8 /* AuthView.swift in Sources */,
 				42EFE9E0750816CF57E0DB1E /* Book.swift in Sources */,
 				A592ECA93DAAB8EEBC75B8C4 /* BookDetailView.swift in Sources */,
+				AA1B2C3D4E5F6A7B8C9D0E1F /* BookRecommendationSheet.swift in Sources */,
 				60C353BFFC805B5F0DC568C8 /* BookNote.swift in Sources */,
 				80623FE84BDF07A07D3FF278 /* BookSearchView.swift in Sources */,
 				9D40A3537C5631E0DCB78902 /* BookStore.swift in Sources */,
-				91A9C7E442AB4BA7C9170FD4 /* ContentView.swift in Sources */,
+				9E3131AF0263FC6BC60B73D0 /* CoverImageView.swift in Sources */,
 				BFDFEA252462C6C147479AF6 /* EmptyStateView.swift in Sources */,
 				5D11D79EB35ABAC1AA1A6CC2 /* GlassCard.swift in Sources */,
 				04EFABD7CC341FDABD0CA825 /* LeafApp.swift in Sources */,
@@ -338,9 +328,6 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 3;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = V76H5YC47J;
-				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = Leaf/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -388,8 +375,10 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = V76H5YC47J;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -403,6 +392,7 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 6.0;
@@ -418,9 +408,6 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 3;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = V76H5YC47J;
-				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = Leaf/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -468,8 +455,10 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = V76H5YC47J;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -490,6 +479,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 6.0;

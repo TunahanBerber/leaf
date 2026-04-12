@@ -1,15 +1,13 @@
 import Foundation
 
-// Kitap modeli — SwiftData yok, tek kaynak Supabase
-// coverImageData sadece bellekte tutulur, persist edilmez
+// kitap modeli — SwiftData yok, tek kaynak Supabase
 
 struct Book: Identifiable, Hashable {
     var id: String
     var userId: String?
     var title: String
     var author: String
-    var coverImageUrl: String?   // Storage'daki path: {userId}/{bookId}
-    var coverImageData: Data?    // Bellekte önbellek — Supabase'e gönderilmez
+    var coverImageUrl: String?   // Storage path'i: {userId}/{bookId} formatında
     var totalPages: Int
     var currentPage: Int
     var isWishlist: Bool
@@ -29,7 +27,6 @@ struct Book: Identifiable, Hashable {
         userId: String? = nil,
         title: String,
         author: String,
-        coverImageData: Data? = nil,
         coverImageUrl: String? = nil,
         totalPages: Int = 0,
         currentPage: Int = 0,
@@ -42,7 +39,6 @@ struct Book: Identifiable, Hashable {
         self.userId = userId
         self.title = title
         self.author = author
-        self.coverImageData = coverImageData
         self.coverImageUrl = coverImageUrl
         self.totalPages = totalPages
         self.currentPage = currentPage

@@ -1,7 +1,5 @@
 import Foundation
 
-// Not modeli — SwiftData yok, tek kaynak Supabase
-
 struct BookNote: Identifiable, Hashable {
     var id: String
     var userId: String?

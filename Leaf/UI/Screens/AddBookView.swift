@@ -1,8 +1,8 @@
 import SwiftUI
 import PhotosUI
 
-// kitap ekleme / düzenleme ekranı — sheet olarak açılıyor
-// SwiftData yok; tüm kayıt işlemi BookStore üzerinden Supabase'e gider
+// kitap ekleme ve düzenleme ekranı — sheet olarak açılıyor
+// SwiftData yok, kayıt direkt BookStore → Supabase'e gidiyor
 
 @MainActor
 struct AddBookView: View {
@@ -22,7 +22,7 @@ struct AddBookView: View {
 
     @State private var showSearchSheet = false
     @State private var selectedOnlineBook: OpenLibraryResult? = nil
-    // katalog için ek meta — kullanıcıya görünmez
+    // katalog için ek meta bilgiler — kullanıcı bunları görmez
     @State private var bookLanguage: String?   = nil
     @State private var bookPublisher: String?  = nil
     @State private var bookPublishedYear: String? = nil
@@ -35,7 +35,7 @@ struct AddBookView: View {
                     VStack(spacing: LeafSpacing.lg) {
                         coverPicker.padding(.top, LeafSpacing.md)
 
-                        // Kitap arama butonu
+                        // kitap arama butonu
                         Button {
                             showSearchSheet = true
                         } label: {
@@ -95,7 +95,7 @@ struct AddBookView: View {
     }
 
     private var coverPicker: some View {
-        // scheme'i closure'a girmeden önce kapıyoruz — Swift 6 Sendable kuralı
+        // scheme'i closure'a girmeden önce yakalıyorum — Swift 6 Sendable kuralı zorunlu kılıyor
         let s = scheme
         let cover = coverData
         return PhotosPicker(selection: $photo, matching: .images) {
@@ -137,7 +137,16 @@ struct AddBookView: View {
                 title = edit.title
                 author = edit.author
                 totalPages = String(edit.totalPages)
-                coverData = edit.coverImageData
+            }
+        }
+        .task {
+            // düzenleme modundaysa mevcut kapağı URL'den çekiyorum
+            guard coverData == nil,
+                  let path = bookToEdit?.coverImageUrl else { return }
+            let urlString = "https://qowvamowkmysdjrnhkkb.supabase.co/storage/v1/object/public/book-covers/\(path)"
+            guard let url = URL(string: urlString) else { return }
+            if let (data, _) = try? await URLSession.shared.data(from: url) {
+                coverData = data
             }
         }
     }
@@ -146,26 +155,28 @@ struct AddBookView: View {
         isSaving = true
         defer { isSaving = false }
 
-        // JPEG sıkıştırması — Storage için boyutu küçültür
+        // Storage'a göndermeden önce JPEG ile sıkıştırıyorum, boyutu düşürüyor
         let compressed: Data? = coverData.flatMap {
             UIImage(data: $0)?.jpegData(compressionQuality: 0.75)
         }
 
         if let book = bookToEdit {
-            // Mevcut kitabı güncelle
+            // düzenleme modundayız, mevcut kitabı güncelliyoruz
             var updated = book
             updated.title = title
             updated.author = author
             updated.totalPages = Int(totalPages) ?? book.totalPages
             await store.updateBook(updated, newCoverData: compressed)
         } else {
-            // Yeni kitap ekle — direkt Supabase'e gider, kataloğa da düşer
+            // sadece OpenLibrary'den seçilenleri kataloğa gönderiyorum
+            // kullanıcının elle yazdığı veya fotoğraf yüklediği kitaplar kataloga yazılmıyor
             await store.addBook(
                 title: title,
                 author: author,
                 coverImageData: compressed,
                 totalPages: Int(totalPages) ?? 0,
                 isWishlist: isWishlist,
+                fromCatalog: selectedOnlineBook != nil,
                 language: bookLanguage,
                 publisher: bookPublisher,
                 publishedYear: bookPublishedYear
@@ -179,7 +190,7 @@ struct AddBookView: View {
         author = book.authorsText
         if let pages = book.pageCount { totalPages = String(pages) }
 
-        // katalog için meta — kayıt sırasında book_catalog'a geçer
+        // katalog meta bilgileri — kayıt sırasında book_catalog'a aktarılıyor
         bookLanguage      = book.language
         bookPublisher     = book.publisher
         bookPublishedYear = book.publishedDate

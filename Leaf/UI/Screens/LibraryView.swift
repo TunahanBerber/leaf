@@ -6,11 +6,11 @@ struct LibraryView: View {
 
     @State private var showAddBook = false
 
-    // Uygulama ayarları
+    // uygulama geneli tema ayarı
     @AppStorage("appTheme") private var appTheme: String = "system"
     @Environment(\.colorScheme) private var scheme
 
-    // Profil baş harfi — email'in ilk karakterinden
+    // profil avatarı için email'in ilk harfini alıyorum
     private var userInitial: String {
         guard let email = auth.currentUser?.email, let first = email.first else { return "U" }
         return String(first).uppercased()
@@ -33,7 +33,7 @@ struct LibraryView: View {
             .navigationTitle("Kitaplığım")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                // Profil Menüsü
+                // profil menüsü — tema değişimi ve çıkış buradan
                 ToolbarItem(placement: .topBarLeading) {
                     Menu {
                         Section("Tema") {
@@ -68,7 +68,7 @@ struct LibraryView: View {
                     }
                 }
 
-                // Kitap ekleme butonu
+                // kitap ekleme butonu — sadece kitaplık doluysa göster
                 if !store.library.isEmpty {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button { showAddBook = true } label: {

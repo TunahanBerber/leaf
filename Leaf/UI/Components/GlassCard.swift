@@ -1,7 +1,7 @@
 import SwiftUI
 
-// web'deki .glass / .glass-md / .glass-lg utility class'larının karşılığı
-// yarı şeffaf yüzey + ultraThinMaterial + çok katmanlı gölge
+// yarı şeffaf cam kartı — web'deki .glass utility class'larının SwiftUI karşılığı
+// ultraThinMaterial üstüne yüzey rengi ve çok katmanlı gölge bindiriyorum
 
 struct GlassCard<Content: View>: View {
     @Environment(\.colorScheme) private var scheme

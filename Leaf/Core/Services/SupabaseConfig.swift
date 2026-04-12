@@ -1,5 +1,5 @@
 // SupabaseConfig.swift
-// Leaf — Supabase istemci yapılandırması
+// Supabase bağlantısını burada kuruyorum — URL ve anahtar xcconfig'den geliyor
 
 import Foundation
 import Supabase
@@ -16,8 +16,7 @@ private enum SupabaseEnv {
     }
 }
 
-// Uygulama genelinde tek Supabase istemcisi
-// Tüm auth ve veritabanı işlemleri bu nesne üzerinden yapılır
+// uygulamada tek bir Supabase istemcisi var — her yerden bu kullanılıyor
 let supabase = SupabaseClient(
     supabaseURL: {
         let urlString = SupabaseEnv.string("SUPABASE_URL")
@@ -26,5 +25,8 @@ let supabase = SupabaseClient(
         }
         return url
     }(),
-    supabaseKey: SupabaseEnv.string("SUPABASE_ANON_KEY")
+    supabaseKey: SupabaseEnv.string("SUPABASE_ANON_KEY"),
+    options: SupabaseClientOptions(
+        auth: SupabaseClientOptions.AuthOptions(emitLocalSessionAsInitialSession: true)
+    )
 )

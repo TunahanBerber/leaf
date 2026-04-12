@@ -1,8 +1,6 @@
-// BookSearchService.swift (OpenLibraryService.swift)
-// Leaf — Google Books + OpenLibrary paralel arama
-//
-// İkisi aynı anda başlar, Google hızlı gelince hemen gösterilir,
-// OpenLibrary gelince (Türkçe kitaplarda daha kapsamlı) sonuçlar merge edilir.
+// OpenLibraryService.swift
+// Google Books ve OpenLibrary'yi paralel çalıştırıyorum
+// Google hızlı gelince hemen gösteriyorum, OpenLibrary gelince (Türkçe'de daha kapsamlı) sonuçları birleştiriyorum
 
 import Foundation
 import Supabase
@@ -23,7 +21,7 @@ struct BookSearchResult: Identifiable, Equatable {
     var authorsText: String { authors.joined(separator: ", ") }
 }
 
-// geriye dönük uyumluluk — AddBookView hâlâ bu tipname'i kullanıyor
+// AddBookView hâlâ bu ismi kullanıyor, geriye dönük uyumluluk için tutuyorum
 typealias OpenLibraryResult = BookSearchResult
 
 // MARK: - Google Books Decodable
@@ -61,21 +59,21 @@ private struct OLDoc: Decodable {
     let language: [String]?
 }
 
-// MARK: - Shared URL Sessions (static → nonisolated'dan erişilebilir)
+// MARK: - URL Session'ları (static çünkü nonisolated'dan erişiyorum)
 
 private enum Sessions {
-    // Google: hızlı, kısa timeout
+    // Google kısa timeout'lu — zaten hızlı, uzun beklemeye gerek yok
     static let google: URLSession = {
         let c = URLSessionConfiguration.default
         c.timeoutIntervalForRequest = 8
         return URLSession(configuration: c)
     }()
 
-    // OpenLibrary: daha toleranslı + agresif cache (aynı sorgu anında döner)
+    // OpenLibrary biraz daha yavaş olabiliyor, cache de ekledim
     static let openLibrary: URLSession = {
         let c = URLSessionConfiguration.default
-        c.timeoutIntervalForRequest = 15
-        c.timeoutIntervalForResource = 20
+        c.timeoutIntervalForRequest = 6
+        c.timeoutIntervalForResource = 8
         c.urlCache = URLCache(
             memoryCapacity: 50 * 1024 * 1024,
             diskCapacity:  200 * 1024 * 1024
@@ -109,16 +107,17 @@ final class OpenLibraryService: ObservableObject {
 
     private var searchTask: Task<Void, Never>?
 
-    // 350ms debounce — çok kısa yazımlarda istek atmıyoruz
+    // 200ms debounce — her tuş vuruşunda istek atmamak için
     func search(query: String) {
         searchTask?.cancel()
         guard !query.trimmingCharacters(in: .whitespaces).isEmpty else {
             results = []
             errorMessage = nil
+            isLoading = false
             return
         }
         searchTask = Task {
-            try? await Task.sleep(nanoseconds: 350_000_000)
+            try? await Task.sleep(nanoseconds: 200_000_000)
             guard !Task.isCancelled else { return }
             await performSearch(query: query)
         }
@@ -142,39 +141,33 @@ final class OpenLibraryService: ObservableObject {
         errorMessage = nil
         results = []
 
-        // 1. Katalog — Supabase sorgusu, ~50ms, anında göster
-        let catalogResults = await fetchCatalog(query: query)
+        // üç kaynağı aynı anda başlatıyorum
+        async let catalogFetch = fetchCatalog(query: query)
+        async let olFetch      = Self.fetchOpenLibrary(query: query)
+        async let googleFetch  = Self.fetchGoogle(query: query)
+
+        // katalog en hızlı (~100ms civarı) — gelince hemen gösteriyorum
+        let catalogResults = await catalogFetch
         guard !Task.isCancelled else { isLoading = false; return }
         if !catalogResults.isEmpty { results = catalogResults }
 
-        // 2 & 3. Google + OpenLibrary eş zamanlı başlat
-        async let googleTask = Task { try await Self.fetchGoogle(query: query) }
-        async let olTask     = Task { try await Self.fetchOpenLibrary(query: query) }
-
-        do {
-            // Google gelince merge et (katalog üste kalır)
-            let google = try await googleTask.value
-            guard !Task.isCancelled else { isLoading = false; return }
-            results = Self.mergeAll(catalog: catalogResults, google: google, openLibrary: [])
-
-            // OL gelince son merge
-            let ol = try await olTask.value
-            guard !Task.isCancelled else { isLoading = false; return }
-            results = Self.mergeAll(catalog: catalogResults, google: google, openLibrary: ol)
-        } catch {
-            if results.isEmpty {
-                // Sadece katalog da boşsa hatayı göster, yoksa olanları göster
-                errorMessage = (error as? NetworkError)?.errorDescription ?? "Kitaplar aranırken bağlantı hatası oluştu. Lütfen tekrar deneyin."
-            }
-        }
+        // OpenLibrary daha doğru sonuç veriyor, onu bekleyip merge ediyorum
+        let olResults = (try? await olFetch) ?? []
+        guard !Task.isCancelled else { isLoading = false; return }
+        results = Self.mergeAll(catalog: catalogResults, google: [], openLibrary: olResults)
         isLoading = false
+
+        // Google arka planda geliyor — OL'u tamamlıyor
+        let googleResults = (try? await googleFetch) ?? []
+        guard !Task.isCancelled else { return }
+        results = Self.mergeAll(catalog: catalogResults, google: googleResults, openLibrary: olResults)
     }
 
-    // MARK: - Katalog Arama (Supabase, hızlı)
+    // MARK: - Katalog Arama (Supabase, en hızlısı)
 
     private func fetchCatalog(query: String) async -> [BookSearchResult] {
         guard !query.isEmpty else { return [] }
-        // title VEYA author içinde geçenleri getir
+        // başlık veya yazar isminde geçen her şeyi çek
         let filter = "title.ilike.%\(query)%,author.ilike.%\(query)%"
         do {
             let records: [CatalogRecord] = try await supabase
@@ -206,32 +199,27 @@ final class OpenLibraryService: ObservableObject {
         )
     }
 
-    // MARK: - Google Books (nonisolated → main actor'dan bağımsız çalışır)
+    // MARK: - Google Books (nonisolated — main actor'ı beklemeden çalışıyor)
 
     private static nonisolated func fetchGoogle(query: String) async throws -> [BookSearchResult] {
         var comps = URLComponents(string: "https://www.googleapis.com/books/v1/volumes")!
-        let q = "inauthor:\"\(query)\" OR intitle:\"\(query)\""
         comps.queryItems = [
-            .init(name: "q",          value: q),
-            .init(name: "maxResults", value: "15"),
+            .init(name: "q",          value: query),
+            .init(name: "maxResults", value: "20"),
             .init(name: "printType",  value: "books")
         ]
         guard let url = comps.url else { return [] }
 
-        return try await NetworkHelper.retry {
-            let (data, resp) = try await Sessions.google.data(from: url)
-            guard let httpResp = resp as? HTTPURLResponse else { throw NetworkError.invalidURL }
-            guard httpResp.statusCode == 200 else { throw NetworkError.badResponse(statusCode: httpResp.statusCode) }
-            
-            let decoded = try JSONDecoder().decode(GBResponse.self, from: data)
-            return (decoded.items ?? []).compactMap { mapGoogle($0) }
-        }
+        let (data, resp) = try await Sessions.google.data(from: url)
+        guard let httpResp = resp as? HTTPURLResponse, httpResp.statusCode == 200 else { return [] }
+        let decoded = try JSONDecoder().decode(GBResponse.self, from: data)
+        return (decoded.items ?? []).compactMap { mapGoogle($0) }
     }
 
     private static nonisolated func mapGoogle(_ item: GBItem) -> BookSearchResult? {
         guard let info = item.volumeInfo, let title = info.title else { return nil }
 
-        // Google bazen http:// döndürür — https'ye çeviriyoruz
+        // Google bazen http:// veriyor, https'ye çeviriyorum
         func toHTTPS(_ s: String?) -> URL? {
             guard let s else { return nil }
             return URL(string: s.replacingOccurrences(of: "http://", with: "https://"))
@@ -239,7 +227,7 @@ final class OpenLibraryService: ObservableObject {
 
         let small   = toHTTPS(info.imageLinks?.smallThumbnail)
         let thumb   = toHTTPS(info.imageLinks?.thumbnail)
-        // zoom=1 → zoom=3 ile daha yüksek çözünürlük
+        // zoom=1'i zoom=3'e çevirince daha yüksek çözünürlük geliyor
         let highRes = toHTTPS(
             info.imageLinks?.thumbnail?
                 .replacingOccurrences(of: "http://", with: "https://")
@@ -259,45 +247,21 @@ final class OpenLibraryService: ObservableObject {
         )
     }
 
-    // MARK: - OpenLibrary (nonisolated → paralel)
+    // MARK: - OpenLibrary (arka planda — q parametresi her alanı tarıyor)
 
     private static nonisolated func fetchOpenLibrary(query: String) async throws -> [BookSearchResult] {
-        // q= her alanı tarıyor — yazar ve başlık ayrı ayrı, paralel aranıyor
-        async let byAuthor = Task { try await fetchOL(field: "author", query: query) }
-        async let byTitle  = Task { try await fetchOL(field: "title",  query: query) }
-
-        // Hata olsa bile diğerini bekleyip (try?) boş liste ile devam edelim ki
-        // biri fail ederse hepsi patlamasın. Fakat ikisi de fail ederse boş döner.
-        let authorResults = (try? await byAuthor.value) ?? []
-        let titleResults  = (try? await byTitle.value) ?? []
-
-        // Yazar eşleşmeleri daha alakalı — önce o, sonra başlık
-        var seen: Set<String> = []
-        var merged: [BookSearchResult] = []
-        for r in authorResults { if seen.insert(r.id).inserted { merged.append(r) } }
-        for r in titleResults  { if seen.insert(r.id).inserted { merged.append(r) } }
-        return merged
-    }
-
-    // Tek bir OL field sorgusu
-    private static nonisolated func fetchOL(field: String, query: String) async throws -> [BookSearchResult] {
         var comps = URLComponents(string: "https://openlibrary.org/search.json")!
         comps.queryItems = [
-            .init(name: field,         value: query),
-            .init(name: "limit",       value: "10"),
-            .init(name: "timeAllowed", value: "5000"),
+            .init(name: "q",           value: query),
+            .init(name: "limit",       value: "12"),
             .init(name: "fields",      value: "key,title,author_name,number_of_pages_median,cover_i,publisher,first_publish_year,language")
         ]
         guard let url = comps.url else { return [] }
 
-        return try await NetworkHelper.retry {
-            let (data, resp) = try await Sessions.openLibrary.data(from: url)
-            guard let httpResp = resp as? HTTPURLResponse else { throw NetworkError.invalidURL }
-            guard httpResp.statusCode == 200 else { throw NetworkError.badResponse(statusCode: httpResp.statusCode) }
-            
-            let decoded = try JSONDecoder().decode(OLResponse.self, from: data)
-            return (decoded.docs ?? []).compactMap { mapOL($0) }
-        }
+        let (data, resp) = try await Sessions.openLibrary.data(from: url)
+        guard let httpResp = resp as? HTTPURLResponse, httpResp.statusCode == 200 else { return [] }
+        let decoded = try JSONDecoder().decode(OLResponse.self, from: data)
+        return (decoded.docs ?? []).compactMap { mapOL($0) }
     }
 
     private static nonisolated func mapOL(_ doc: OLDoc) -> BookSearchResult? {
@@ -325,7 +289,7 @@ final class OpenLibraryService: ObservableObject {
 
     // MARK: - Merge & Deduplicate
 
-    // Sıralama: Katalog (bizim veri) → Türkçe → OL → Google
+    // sıralama: kendi kataloğumuz → Türkçe → OpenLibrary → Google
     private static nonisolated func mergeAll(
         catalog: [BookSearchResult],
         google: [BookSearchResult],
@@ -334,13 +298,13 @@ final class OpenLibraryService: ObservableObject {
         var seen: Set<String> = []
         var merged: [BookSearchResult] = []
 
-        // 1. Katalog her zaman üste — kendi verimiz, en güvenilir
+        // kendi katalog verimiz her zaman en üste çıkıyor
         for r in catalog {
             let key = normalize(r.title + r.authorsText)
             if seen.insert(key).inserted { merged.append(r) }
         }
 
-        // 2. Geri kalanları dil + kaynak sırasıyla ekle
+        // geri kalanları dil ve kaynak sırasına göre sıralayıp ekliyorum
         let rest = (openLibrary + google).sorted { a, b in
             let aIsOL      = a.id.hasPrefix("ol_")
             let bIsOL      = b.id.hasPrefix("ol_")

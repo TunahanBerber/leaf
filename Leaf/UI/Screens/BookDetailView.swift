@@ -1,14 +1,14 @@
 import SwiftUI
 
-// kitap detay ekranı — kapak, bilgi, okuma ilerlemesi, notlar
-// SwiftData yok; tüm işlemler BookStore üzerinden Supabase'e gider
+// kitap detay ekranı — kapak, bilgi, okuma ilerlemesi ve notlar bir arada
+// SwiftData yok, her şey BookStore → Supabase üzerinden geçiyor
 
 struct BookDetailView: View {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var store: BookStore
 
-    // Kitabın güncel hali store'dan okunur — local state değil
+    // kitabın güncel halini store'dan okuyorum — local state tutmuyorum
     let bookId: String
 
     @State private var showAddNote = false
@@ -17,7 +17,7 @@ struct BookDetailView: View {
     @State private var showEditPage = false
     @State private var pageText = ""
 
-    // Store'dan güncel kitabı bul
+    // store'dan güncel kitabı bul
     private var book: Book? {
         store.books.first { $0.id == bookId }
     }
@@ -32,14 +32,14 @@ struct BookDetailView: View {
             if let book {
                 content(book: book)
             } else {
-                // Kitap silindiyse bu ekran kapanacak
+                // kitap silindiyse store'dan düşer, bu ekran kendiliğinden kapanır
                 ProgressView()
             }
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationTitle(book?.title ?? "")
         .task {
-            // Notları Supabase'den çek
+            // ekran açılınca notları Supabase'den çekiyorum
             if let book { await store.fetchNotes(for: book.id) }
         }
         .sheet(isPresented: $showAddNote) {
@@ -110,46 +110,13 @@ struct BookDetailView: View {
     // MARK: - Kapak Başlık
     @ViewBuilder
     private func headerImage(book: Book) -> some View {
-        if let data = book.coverImageData, let img = UIImage(data: data) {
-            GeometryReader { geo in
-                Image(uiImage: img)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: geo.size.width, height: 280)
-                    .clipped()
-            }
-            .frame(height: 280)
-            .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: LeafRadius.xlarge, bottomTrailingRadius: LeafRadius.xlarge))
+        CoverImageView(coverUrl: book.coverImageUrl, placeholderIconSize: 48)
+            .frame(height: book.coverImageUrl != nil ? 280 : 200)
+            .clipShape(UnevenRoundedRectangle(
+                bottomLeadingRadius: LeafRadius.xlarge,
+                bottomTrailingRadius: LeafRadius.xlarge
+            ))
             .shadow(color: .black.opacity(0.15), radius: 20, y: 10)
-            .task {
-                // Kapak henüz bellekte yoksa Storage'dan indir
-                await store.loadCoverIfNeeded(for: book.id)
-            }
-        } else if book.coverImageUrl != nil {
-            // URL var ama kapak indiriliyor
-            ZStack {
-                LinearGradient(
-                    colors: [LeafColors.accent(for: scheme).opacity(0.12), LeafColors.accent(for: scheme).opacity(0.04)],
-                    startPoint: .topLeading, endPoint: .bottomTrailing
-                )
-                ProgressView().tint(LeafColors.accent(for: scheme))
-            }
-            .frame(height: 280)
-            .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: LeafRadius.xlarge, bottomTrailingRadius: LeafRadius.xlarge))
-            .task { await store.loadCoverIfNeeded(for: book.id) }
-        } else {
-            ZStack {
-                LinearGradient(
-                    colors: [LeafColors.accent(for: scheme).opacity(0.12), LeafColors.accent(for: scheme).opacity(0.04)],
-                    startPoint: .topLeading, endPoint: .bottomTrailing
-                )
-                Image(systemName: "book.closed.fill")
-                    .font(.system(size: 48, weight: .ultraLight))
-                    .foregroundStyle(LeafColors.accent(for: scheme).opacity(0.3))
-            }
-            .frame(height: 200)
-            .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: LeafRadius.xlarge, bottomTrailingRadius: LeafRadius.xlarge))
-        }
     }
 
     // MARK: - Bilgi Kartı

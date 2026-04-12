@@ -1,15 +1,12 @@
 // BookStore.swift
-// Leaf — Tek veri kaynağı: Supabase
-//
-// SwiftData tamamen kaldırıldı.
-// Tüm CRUD işlemleri doğrudan Supabase'e gider,
-// UI state bu store'daki @Published books dizisinden beslenir.
+// SwiftData'yı tamamen çıkardım, artık her şey Supabase üzerinden
+// tüm CRUD buradan geçiyor, UI state books dizisini izliyor
 
 import Foundation
 import UIKit
 import Supabase
 
-// MARK: - Supabase Codable Records (DB ↔ App köprüsü)
+// MARK: - Supabase Kayıt Modelleri (veritabanı ↔ uygulama köprüsü)
 
 private struct BookRecord: Codable {
     var id: String?
@@ -37,17 +34,17 @@ private struct BookRecord: Codable {
 
     func toBook(notes: [BookNote] = []) -> Book {
         Book(
-            id: id ?? UUID().uuidString,
-            userId: userId,
-            title: title,
-            author: author,
+            id:           id ?? UUID().uuidString,
+            userId:       userId,
+            title:        title,
+            author:       author,
             coverImageUrl: coverImageUrl,
-            totalPages: totalPages,
-            currentPage: currentPage,
-            isWishlist: isWishlist,
-            createdAt: createdAt ?? .now,
-            updatedAt: updatedAt ?? .now,
-            notes: notes
+            totalPages:   totalPages,
+            currentPage:  currentPage,
+            isWishlist:   isWishlist,
+            createdAt:    createdAt ?? .now,
+            updatedAt:    updatedAt ?? .now,
+            notes:        notes
         )
     }
 }
@@ -86,19 +83,49 @@ private struct BookNoteRecord: Codable {
     }
 }
 
+// MARK: - Katalog Modeli
+
+struct BookCatalogItem: Codable, Identifiable {
+    var id: String?
+    var title: String
+    var author: String
+    var pageCount: Int?
+    var language: String?
+    var coverUrl: String?
+    var publisher: String?
+    var publishedYear: String?
+    var addedCount: Int = 0
+
+    enum CodingKeys: String, CodingKey {
+        case id, title, author, language, publisher
+        case pageCount     = "page_count"
+        case coverUrl      = "cover_url"
+        case publishedYear = "published_year"
+        case addedCount    = "added_count"
+    }
+}
+
 // MARK: - Book Store
 
 @MainActor
 final class BookStore: ObservableObject {
 
-    @Published var books: [Book] = []
+    @Published private(set) var library:  [Book] = []
+    @Published private(set) var wishlist: [Book] = []
+
+    // books değişince library ve wishlist otomatik güncelleniyor
+    // her render'da filter çalışmıyor, sadece veri değişince — performans için önemli
+    var books: [Book] = [] {
+        didSet {
+            library  = books.filter { !$0.isWishlist }
+            wishlist = books.filter {  $0.isWishlist }
+        }
+    }
+
     @Published var isLoading = false
     @Published var error: String?
 
     private let bucketName = "book-covers"
-
-    var library:  [Book] { books.filter { !$0.isWishlist } }
-    var wishlist: [Book] { books.filter {  $0.isWishlist } }
 
     // MARK: - Fetch All
 
@@ -151,11 +178,12 @@ final class BookStore: ObservableObject {
         coverImageData: Data?,
         totalPages: Int,
         isWishlist: Bool,
+        fromCatalog: Bool = false,
         language: String? = nil,
         publisher: String? = nil,
         publishedYear: String? = nil
     ) async {
-        // lowercased — PostgreSQL auth.uid()::text küçük harf döndürür, eşleşme şart
+        // lowercased şart — PostgreSQL auth.uid()::text küçük harf döndürüyor, uyuşmazsa RLS patlar
         guard let userId = try? await supabase.auth.session.user.id.uuidString.lowercased() else { return }
 
         let bookId = UUID().uuidString
@@ -189,22 +217,25 @@ final class BookStore: ObservableObject {
 
             books.insert(saved.toBook(), at: 0)
 
-            // Kataloğa da ekle — aynı kitap varsa atla (ON CONFLICT DO NOTHING)
-            await addToCatalog(
-                title: title,
-                author: author,
-                pageCount: totalPages > 0 ? totalPages : nil,
-                language: language,
-                coverUrl: coverUrl,
-                publisher: publisher,
-                publishedYear: publishedYear
-            )
+            // sadece OpenLibrary'den gelen kitaplar kataloğa gidiyor
+            // kullanıcının elle girdiği ya da fotoğraf eklediği kitaplar kataloga yazılmıyor
+            if fromCatalog {
+                await addToCatalog(
+                    title: title,
+                    author: author,
+                    pageCount: totalPages > 0 ? totalPages : nil,
+                    language: language,
+                    coverUrl: coverUrl,
+                    publisher: publisher,
+                    publishedYear: publishedYear
+                )
+            }
         } catch {
             self.error = "Kitap eklenemedi: \(error.localizedDescription)"
         }
     }
 
-    // MARK: - Catalog Upsert (dahili, kullanıcıya görünmez)
+    // MARK: - Katalog Kayıt (dahili, kullanıcı görmez)
 
     private func addToCatalog(
         title: String,
@@ -215,7 +246,7 @@ final class BookStore: ObservableObject {
         publisher: String?,
         publishedYear: String?
     ) async {
-        // Supabase Storage path değil, public URL oluştur
+        // Storage path'i değil, herkesin erişebileceği public URL'yi yazıyoruz kataloğa
         var publicCoverUrl: String? = nil
         if let path = coverUrl {
             publicCoverUrl = "https://qowvamowkmysdjrnhkkb.supabase.co/storage/v1/object/public/book-covers/\(path)"
@@ -231,11 +262,14 @@ final class BookStore: ObservableObject {
             "published_year": publishedYear.map { .string($0) } ?? .null
         ]
 
-        // Aynı title+author kombinasyonu varsa atla
+        // aynı kitap zaten katalogdaysa hata verme, sessizce geç
         try? await supabase
             .from("book_catalog")
             .insert(entry, returning: .minimal)
             .execute()
+
+        // yeni ya da mevcut fark etmez — eklenme sayacını artır
+        await incrementCatalogCount(title: title, author: author)
     }
 
     // MARK: - Update Book
@@ -273,7 +307,7 @@ final class BookStore: ObservableObject {
                 var updated = book
                 updated.coverImageUrl = coverUrl
                 updated.updatedAt = .now
-                // Notları koru
+                // notları da taşıyoruz, kaybolmasın
                 updated.notes = books[idx].notes
                 books[idx] = updated
             }
@@ -294,10 +328,10 @@ final class BookStore: ObservableObject {
                 .eq("id", value: book.id)
                 .execute()
 
-            // Önce Supabase başarılıysa yerelden de kaldır
+            // Supabase'den silme başarılıysa yerel listeden de kaldırıyoruz
             books.removeAll { $0.id == book.id }
 
-            // Storage'dan kapak sil (hata olsa da devam)
+            // Storage'daki kapağı da sil — hata olsa bile devam et, kritik değil
             try? await supabase.storage
                 .from(bucketName)
                 .remove(paths: ["\(userId)/\(book.id)"])
@@ -357,17 +391,47 @@ final class BookStore: ObservableObject {
         }
     }
 
-    // MARK: - Cover Image
+    // MARK: - Kitap Önerisi (book_catalog tablosundan)
 
-    func loadCoverIfNeeded(for bookId: String) async {
-        guard let idx = books.firstIndex(where: { $0.id == bookId }),
-              books[idx].coverImageData == nil,
-              let path = books[idx].coverImageUrl else { return }
+    func fetchRecommendation(alreadySeen: Set<String> = []) async -> BookCatalogItem? {
+        do {
+            let items: [BookCatalogItem] = try await supabase
+                .from("book_catalog")
+                .select()
+                .order("added_count", ascending: false)
+                .limit(50)
+                .execute()
+                .value
 
-        if let data = await downloadCover(path: path) {
-            books[idx].coverImageData = data
+            let userTitles   = Set(books.map { $0.title.lowercased() })
+            let seenTitles   = alreadySeen.map { $0.lowercased() }
+            let allExcluded  = userTitles.union(seenTitles)
+
+            // en iyi ihtimal: kullanıcının kitaplığında yok ve bu oturumda görülmedi
+            if let pick = items.filter({ !allExcluded.contains($0.title.lowercased()) }).randomElement() {
+                return pick
+            }
+            // oturum filtresi kaldırarak tekrar dene — en azından kütüphanede olmasın
+            if let pick = items.filter({ !userTitles.contains($0.title.lowercased()) }).randomElement() {
+                return pick
+            }
+            // son çare — katalogdan rastgele birini ver
+            return items.randomElement()
+        } catch {
+            return nil
         }
     }
+
+    func incrementCatalogCount(title: String, author: String) async {
+        try? await supabase
+            .rpc("increment_book_catalog", params: [
+                "p_title": AnyJSON.string(title),
+                "p_author": AnyJSON.string(author)
+            ])
+            .execute()
+    }
+
+    // MARK: - Cover Image
 
     func uploadCover(data: Data, path: String) async -> String? {
         do {
@@ -387,17 +451,4 @@ final class BookStore: ObservableObject {
         }
     }
 
-    func downloadCover(path: String) async -> Data? {
-        // Bucket public — direkt URL ile indir, auth gerekmez, çok daha hızlı
-        let publicURL = "https://qowvamowkmysdjrnhkkb.supabase.co/storage/v1/object/public/\(bucketName)/\(path)"
-        guard let url = URL(string: publicURL) else { return nil }
-        do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            print("✅ Kapak indirildi: \(path), boyut: \(data.count) byte")
-            return data
-        } catch {
-            print("❌ Kapak indirilemedi [\(path)]: \(error)")
-            return nil
-        }
-    }
 }

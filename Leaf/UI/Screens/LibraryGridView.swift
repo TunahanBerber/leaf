@@ -1,6 +1,6 @@
 import SwiftUI
 
-// kitaplık grid görünümü — iki sütunlu, cam efektli kartlar
+// kitaplık grid görünümü — adaptive iki sütun, cam efektli kartlar
 
 struct LibraryGridView: View {
     @Environment(\.colorScheme) private var scheme
@@ -64,21 +64,23 @@ struct LibraryGridView: View {
     }
 
     private func delete(_ book: Book) {
-        // BookStore önce Supabase'den siler, sonra yerel diziden kaldırır
+        // store önce Supabase'den siliyor, sonra yerel listeden kaldırıyor
         Task { await store.deleteBook(book) }
     }
 }
 
 // MARK: - Tek kitap kartı
 
+// BookCardView, BookStore'a bağımlı değil — store değişince gereksiz render olmasın diye
+// kapak yüklemesini CoverImageView kendi @StateObject'i ile hallediyor
 struct BookCardView: View {
     @Environment(\.colorScheme) private var scheme
-    @EnvironmentObject private var store: BookStore
     let book: Book
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            coverSection.frame(height: 220).clipped()
+            CoverImageView(coverUrl: book.coverImageUrl)
+                .frame(height: 220)
 
             VStack(alignment: .leading, spacing: LeafSpacing.xxs) {
                 Text(book.title)
@@ -111,49 +113,5 @@ struct BookCardView: View {
                 .strokeBorder(LeafColors.borderSubtle(for: scheme), lineWidth: 0.5)
         }
         .shadow(color: .black.opacity(0.06), radius: 8, y: 4)
-        // kart ekrana gelince kapağı indir — data yoksa Storage'dan çeker
-        .task { await store.loadCoverIfNeeded(for: book.id) }
-    }
-
-    @ViewBuilder
-    private var coverSection: some View {
-        if let data = book.coverImageData, let img = UIImage(data: data) {
-            GeometryReader { geo in
-                Image(uiImage: img)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: geo.size.width, height: geo.size.height)
-                    .clipped()
-            }
-        } else if book.coverImageUrl != nil {
-            // URL var, indiriliyor — küçük spinner göster
-            ZStack {
-                LinearGradient(
-                    colors: [
-                        LeafColors.accent(for: scheme).opacity(0.15),
-                        LeafColors.accent(for: scheme).opacity(0.05)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                ProgressView()
-                    .scaleEffect(0.8)
-                    .tint(LeafColors.accent(for: scheme).opacity(0.5))
-            }
-        } else {
-            ZStack {
-                LinearGradient(
-                    colors: [
-                        LeafColors.accent(for: scheme).opacity(0.15),
-                        LeafColors.accent(for: scheme).opacity(0.05)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                Image(systemName: "book.closed")
-                    .font(.system(size: 36, weight: .ultraLight))
-                    .foregroundStyle(LeafColors.accent(for: scheme).opacity(0.4))
-            }
-        }
     }
 }

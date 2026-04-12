@@ -1,26 +1,26 @@
 import SwiftUI
 
-// web'deki 8pt spacing sistemi, köşe yuvarlaklıkları ve blur değerleri
+// tasarım token'ları — spacing, köşe yuvarlaklığı ve animasyon sabitleri burada
 
 enum LeafSpacing {
-    static let xxs: CGFloat = 4     // --space-1
-    static let xs: CGFloat = 8      // --space-2
-    static let sm: CGFloat = 12     // --space-3
-    static let md: CGFloat = 16     // --space-4
-    static let lg: CGFloat = 20     // --space-5
-    static let xl: CGFloat = 24     // --space-6
-    static let xxl: CGFloat = 32    // --space-7
-    static let xxxl: CGFloat = 40   // --space-8
+    static let xxs: CGFloat = 4     // çok küçük boşluk
+    static let xs: CGFloat = 8      // küçük
+    static let sm: CGFloat = 12     // biraz küçük
+    static let md: CGFloat = 16     // standart
+    static let lg: CGFloat = 20     // orta büyük
+    static let xl: CGFloat = 24     // büyük
+    static let xxl: CGFloat = 32    // daha büyük
+    static let xxxl: CGFloat = 40   // en büyük
 }
 
 enum LeafRadius {
-    static let small: CGFloat = 10   // --radius-small
-    static let medium: CGFloat = 14  // --radius-medium
-    static let large: CGFloat = 18   // --radius-large
-    static let xlarge: CGFloat = 24  // --radius-xlarge
+    static let small: CGFloat = 10   // küçük köşe
+    static let medium: CGFloat = 14  // orta köşe
+    static let large: CGFloat = 18   // büyük köşe
+    static let xlarge: CGFloat = 24  // çok büyük köşe
 }
 
-// animasyon sabitleri — web'deki motion.css karşılığı
+// animasyon sabitleri — hız ve yay değerlerini tek yerde tutuyorum
 enum LeafMotion {
     static let fast: Animation = .easeOut(duration: 0.12)
     static let regular: Animation = .easeOut(duration: 0.18)

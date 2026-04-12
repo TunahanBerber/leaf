@@ -3,23 +3,22 @@ import Sentry
 
 @main
 struct LeafApp: App {
-    // tema tercihi: "system", "light", "dark"
+    // tema tercihi — "system", "light", "dark" arasında tutuluyor
     @AppStorage("appTheme") private var appTheme: String = "system"
 
-    // Auth servisi — deep link handler için uygulama seviyesinde yaşıyor
+    // auth servisi uygulama seviyesinde duruyor çünkü deep link'i burada yakalıyoruz
     @StateObject private var auth = SupabaseAuthService()
 
-    // Tek veri kaynağı: BookStore. Supabase'e doğrudan yazar/okur.
+    // tek veri kaynağı bu store — tüm okuma/yazma Supabase üzerinden
     @StateObject private var store = BookStore()
 
     init() {
         let dsn = Bundle.main.object(forInfoDictionaryKey: "SENTRY_DSN") as? String ?? ""
-        if !dsn.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        // DSN yoksa veya bozuksa Sentry'yi başlatmıyorum, crash yaşatmama gerek yok
+        if dsn.hasPrefix("https://") {
             SentrySDK.start { options in
                 options.dsn = dsn
                 options.debug = false
-                // Uygulama çökmelerini yakalayacak
-                // Performance monitoring istersen: options.tracesSampleRate = 1.0
             }
         }
     }
@@ -30,15 +29,15 @@ struct LeafApp: App {
                 .preferredColorScheme(resolvedScheme)
                 .environmentObject(auth)
                 .environmentObject(store)
-                // Google OAuth dönüş URL'ini yakala
+                // Google OAuth'tan dönen URL'yi auth servisine iletiyorum
                 .onOpenURL { url in
                     Task { await auth.handleDeepLink(url) }
                 }
         }
-        // SwiftData kaldırıldı — modelContainer yok
+        // SwiftData tamamen kaldırdım, modelContainer gerekmiyor artık
     }
 
-    // nil döndüğünde sistem ayarına uyar
+    // nil dönünce sistem temasına uyar, case'e girmezse default burası
     private var resolvedScheme: ColorScheme? {
         switch appTheme {
         case "light": .light

@@ -1,14 +1,14 @@
 import SwiftUI
 
 // not ekleme ekranı — sheet olarak açılıyor
-// SwiftData yok; not direkt BookStore üzerinden Supabase'e kaydedilir
+// direkt BookStore üzerinden Supabase'e gönderiyorum, SwiftData yok
 
 struct AddNoteView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var scheme
     @EnvironmentObject private var store: BookStore
 
-    // Kitabı ID üzerinden takip ediyoruz; struct olduğu için reference yok
+    // kitabı ID ile takip ediyorum — struct olduğu için reference tutmak mümkün değil
     let bookId: String
 
     @State private var title = ""
@@ -25,7 +25,7 @@ struct AddNoteView: View {
                         LeafTextField(title: "Not Başlığı",     text: $title,   placeholder: "Notunuza bir başlık verin")
                         LeafTextField(title: "Sayfa Numarası",  text: $pageNum, placeholder: "İsteğe bağlı", keyboard: .numberPad)
 
-                        // İçerik alanı
+                        // içerik alanı
                         VStack(alignment: .leading, spacing: LeafSpacing.xs) {
                             Text("Not İçeriği")
                                 .font(.system(size: 13, weight: .medium))
@@ -88,7 +88,7 @@ struct AddNoteView: View {
     private func save() async {
         isSaving = true
         defer { isSaving = false }
-        // Direkt Supabase'e yaz; store hem DB'ye kaydeder hem books[idx].notes'a ekler
+        // store hem Supabase'e kaydediyor hem de books[idx].notes'a ekliyor — tek satır iş
         await store.addNote(
             title: title,
             content: content,

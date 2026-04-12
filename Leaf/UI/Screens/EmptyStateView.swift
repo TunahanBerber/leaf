@@ -1,7 +1,7 @@
 import SwiftUI
 
-// web'deki EmptyState bileşeninin SwiftUI karşılığı
-// ikon + başlık + açıklama + aksiyon butonu
+// boş durum ekranı — ikon, başlık, açıklama ve aksiyon butonu içeriyor
+// kütüphane ve istek listesi boşken gösteriliyor
 
 struct EmptyStateView: View {
     @Environment(\.colorScheme) private var scheme
@@ -15,7 +15,7 @@ struct EmptyStateView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // cam efektli kitap ikonu kutusu
+            // cam efektli ikon kutusu
             GlassCard {
                 Image(systemName: icon)
                     .font(.system(size: 32, weight: .light))
@@ -38,7 +38,7 @@ struct EmptyStateView: View {
                 .lineSpacing(4)
                 .padding(.bottom, LeafSpacing.xxl)
 
-            // Aksiyon butonu
+            // aksiyon butonu
             Button(action: onAdd) {
                 Text(buttonText)
                     .font(.system(size: 13, weight: .semibold))

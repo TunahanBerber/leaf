@@ -1,7 +1,6 @@
 import SwiftUI
 
-// web'deki bg-gradient'in SwiftUI karşılığı
-// sayfanın arkasında sakin bir geçiş oluşturuyor
+// her sayfanın arka planı bu — üst renkten alt renge sakin bir geçiş
 
 struct LeafGradientBackground: View {
     @Environment(\.colorScheme) private var scheme
