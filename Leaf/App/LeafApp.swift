@@ -11,6 +11,7 @@ struct LeafApp: App {
 
     // tek veri kaynağı bu store — tüm okuma/yazma Supabase üzerinden
     @StateObject private var store = BookStore()
+    @StateObject private var social = SocialService()
 
     init() {
         let dsn = Bundle.main.object(forInfoDictionaryKey: "SENTRY_DSN") as? String ?? ""
@@ -29,6 +30,7 @@ struct LeafApp: App {
                 .preferredColorScheme(resolvedScheme)
                 .environmentObject(auth)
                 .environmentObject(store)
+                .environmentObject(social)
                 // Google OAuth'tan dönen URL'yi auth servisine iletiyorum
                 .onOpenURL { url in
                     Task { await auth.handleDeepLink(url) }

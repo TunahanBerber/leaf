@@ -3,17 +3,17 @@ import SwiftUI
 struct LibraryView: View {
     @EnvironmentObject private var auth: SupabaseAuthService
     @EnvironmentObject private var store: BookStore
+    @EnvironmentObject private var social: SocialService
 
-    @State private var showAddBook = false
+    @State private var showAddBook    = false
+    @State private var showSettings   = false
 
-    // uygulama geneli tema ayarı
     @AppStorage("appTheme") private var appTheme: String = "system"
     @Environment(\.colorScheme) private var scheme
 
-    // profil avatarı için email'in ilk harfini alıyorum
     private var userInitial: String {
-        guard let email = auth.currentUser?.email, let first = email.first else { return "U" }
-        return String(first).uppercased()
+        let name = social.currentProfile?.username ?? auth.currentUser?.email ?? "U"
+        return String(name.prefix(1)).uppercased()
     }
 
     var body: some View {
@@ -33,28 +33,9 @@ struct LibraryView: View {
             .navigationTitle("Kitaplığım")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                // profil menüsü — tema değişimi ve çıkış buradan
                 ToolbarItem(placement: .topBarLeading) {
-                    Menu {
-                        Section("Tema") {
-                            Button { withAnimation { appTheme = "system" } } label: {
-                                Label("Sistem", systemImage: "sparkles")
-                            }
-                            Button { withAnimation { appTheme = "light" } } label: {
-                                Label("Açık", systemImage: "sun.max")
-                            }
-                            Button { withAnimation { appTheme = "dark" } } label: {
-                                Label("Koyu", systemImage: "moon")
-                            }
-                        }
-
-                        Section("Oturum (\(auth.currentUser?.email ?? "Bilinmiyor"))") {
-                            Button(role: .destructive) {
-                                Task { await auth.signOut() }
-                            } label: {
-                                Label("Çıkış Yap", systemImage: "arrow.right.circle.fill")
-                            }
-                        }
+                    Button {
+                        showSettings = true
                     } label: {
                         ZStack {
                             Circle()
@@ -68,7 +49,6 @@ struct LibraryView: View {
                     }
                 }
 
-                // kitap ekleme butonu — sadece kitaplık doluysa göster
                 if !store.library.isEmpty {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button { showAddBook = true } label: {
@@ -81,6 +61,11 @@ struct LibraryView: View {
             .sheet(isPresented: $showAddBook) {
                 AddBookView()
             }
+            .sheet(isPresented: $showSettings) {
+                SettingsView()
+                    .environmentObject(auth)
+                    .environmentObject(social)
+            }
         }
     }
 
@@ -91,4 +76,5 @@ struct LibraryView: View {
         default:      return LeafColors.primaryLight
         }
     }
+
 }
