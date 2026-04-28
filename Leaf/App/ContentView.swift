@@ -116,7 +116,7 @@ struct MainTabView: View {
         // Uygulama ön plana gelince okunmamış sayısını güncelle
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
-                Task { await social.fetchConversations() }
+                Task { await social.refreshUnreadCount() }
             }
         }
         // Bildirime tıklanınca inbox tab'ına geç
