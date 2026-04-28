@@ -1,0 +1,2 @@
+#include "Secrets.xcconfig"
+APS_ENVIRONMENT = production

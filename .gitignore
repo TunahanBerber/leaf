@@ -22,6 +22,26 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Xcode
+*.xcworkspace
+xcuserdata/
+DerivedData/
+*.xccheckout
+*.moved-aside
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+
+# Secrets — gerçek değerleri içerir, asla commit edilmez
+Config/Secrets.xcconfig
+
 #personally
 leaf.md
 RULE.md
+.sentryclirc

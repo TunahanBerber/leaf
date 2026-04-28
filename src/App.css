@@ -1,7 +1,0 @@
-/* Uygulama genelindeki yerleşim düzenini burada tanımladım */
-.app-container {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  /* İleride gerekirse buraya global kısıtlamalar ekleyebilirim */
-}
