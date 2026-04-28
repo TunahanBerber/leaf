@@ -68,6 +68,7 @@ struct MainTabView: View {
     @EnvironmentObject private var social: SocialService
     @EnvironmentObject private var pushService: PushNotificationService
     @State private var selectedTab: MainTab = .library
+    @Environment(\.scenePhase) private var scenePhase
 
     @AppStorage("socialFeaturesEnabled") private var socialFeaturesEnabled: Bool = true
 
@@ -111,6 +112,12 @@ struct MainTabView: View {
         .onAppear {
             pushService.requestPermissionAndRegister()
             pushService.clearBadge()
+        }
+        // Uygulama ön plana gelince okunmamış sayısını güncelle
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                Task { await social.fetchConversations() }
+            }
         }
         // Bildirime tıklanınca inbox tab'ına geç
         .onReceive(NotificationCenter.default.publisher(for: .navigateToConversation)) { _ in
