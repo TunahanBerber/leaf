@@ -39,11 +39,11 @@ struct ContentView: View {
         .animation(.easeInOut(duration: 0.3), value: auth.isAuthenticated)
         .animation(.easeInOut(duration: 0.25), value: social.profileLoaded)
         .task(id: auth.isAuthenticated) {
-            // oturum değişince profili yeniden yükle
             if auth.isAuthenticated {
                 await social.loadCurrentProfile()
+                // giriş yapılınca hemen subscription başlat ve badge yükle
+                await social.fetchConversations()
             } else {
-                // çıkış yapılınca profil state'ini temizle
                 social.currentProfile = nil
                 social.profileLoaded = false
             }
