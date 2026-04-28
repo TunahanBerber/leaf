@@ -97,6 +97,7 @@ struct MainTabView: View {
                     .tabItem {
                         Label("Mesajlar", systemImage: "message.fill")
                     }
+                    .badge(social.unreadCount)
                     .tag(MainTab.inbox)
             }
 

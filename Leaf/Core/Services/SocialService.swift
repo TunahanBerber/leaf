@@ -44,6 +44,9 @@ final class SocialService: ObservableObject {
 
     // profil henüz yüklenmedi mi (nil) vs yüklendi ama yok (currentProfile == nil)
     @Published var profileLoaded = false
+    @Published var unreadCount: Int = 0
+
+    private var currentUserId: String = ""
 
     // 18 yaş altı sosyal özelliklere erişemez
     var isSocialAllowed: Bool {
@@ -298,6 +301,7 @@ final class SocialService: ObservableObject {
 
     func fetchConversations() async {
         guard let userId = try? await supabase.auth.session.user.id.uuidString.lowercased() else { return }
+        currentUserId = userId
         isLoading = true
         defer { isLoading = false }
 
@@ -310,12 +314,10 @@ final class SocialService: ObservableObject {
                 .execute()
                 .value
 
-            // diğer kullanıcıların ID'lerini topla
             let otherIds = convs.map { conv -> String in
                 conv.userAId == userId ? conv.userBId : conv.userAId
             }
 
-            // profilleri tek sorguda çek
             if !otherIds.isEmpty {
                 let profiles: [ProfileRecord] = (try? await supabase
                     .from("profiles")
@@ -332,7 +334,33 @@ final class SocialService: ObservableObject {
                 }
             }
 
+            // her sohbetin son mesajını çek
+            if !convs.isEmpty {
+                let convIds = convs.map { $0.id }
+                let allMessages: [Message] = (try? await supabase
+                    .from("messages")
+                    .select()
+                    .in("conversation_id", values: convIds)
+                    .order("created_at", ascending: false)
+                    .execute()
+                    .value) ?? []
+
+                var latestByConv: [String: Message] = [:]
+                for msg in allMessages {
+                    if latestByConv[msg.conversationId] == nil {
+                        latestByConv[msg.conversationId] = msg
+                    }
+                }
+                for i in convs.indices {
+                    convs[i].lastMessage = latestByConv[convs[i].id]
+                }
+            }
+
             conversations = convs
+            unreadCount = convs.filter { conv in
+                guard let last = conv.lastMessage else { return false }
+                return !last.isRead && last.senderId != userId
+            }.count
         } catch {
             self.error = "Sohbetler yüklenemedi."
         }
@@ -470,6 +498,15 @@ final class SocialService: ObservableObject {
             .neq("sender_id", value: userId)
             .eq("is_read", value: false)
             .execute()
+
+        // local state güncelle
+        if let idx = conversations.firstIndex(where: { $0.id == conversationId }) {
+            conversations[idx].lastMessage?.isRead = true
+            unreadCount = conversations.filter { conv in
+                guard let last = conv.lastMessage else { return false }
+                return !last.isRead && last.senderId != currentUserId
+            }.count
+        }
     }
 
     // MARK: - Realtime

@@ -81,6 +81,8 @@ struct InboxView: View {
             if !socialService.conversations.isEmpty {
                 Section {
                     ForEach(socialService.conversations) { conversation in
+                        let myId = socialService.currentProfile?.id ?? ""
+                        let isUnread = conversation.lastMessage.map { !$0.isRead && $0.senderId != myId } ?? false
                         NavigationLink {
                             ConversationView(
                                 conversationId: conversation.id,
@@ -89,7 +91,7 @@ struct InboxView: View {
                             .environmentObject(socialService)
                             .environmentObject(auth)
                         } label: {
-                            ConversationRow(conversation: conversation)
+                            ConversationRow(conversation: conversation, isUnread: isUnread)
                         }
                         .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
                         .listRowBackground(Color.clear)
@@ -243,6 +245,7 @@ struct RequestRow: View {
 
 struct ConversationRow: View {
     let conversation: Conversation
+    let isUnread: Bool
     @Environment(\.colorScheme) var colorScheme
 
     private var displayName: String {
@@ -252,7 +255,7 @@ struct ConversationRow: View {
     var body: some View {
         HStack(spacing: LeafSpacing.md) {
             Circle()
-                .fill(LeafColors.accent(for: colorScheme).opacity(0.15))
+                .fill(LeafColors.accent(for: colorScheme).opacity(isUnread ? 0.25 : 0.15))
                 .frame(width: 52, height: 52)
                 .overlay {
                     Text(displayName.prefix(1).uppercased())
@@ -262,13 +265,15 @@ struct ConversationRow: View {
 
             VStack(alignment: .leading, spacing: LeafSpacing.xxs) {
                 Text(displayName)
-                    .font(.headline)
+                    .font(isUnread ? .headline.bold() : .headline)
                     .foregroundStyle(LeafColors.textPrimary(for: colorScheme))
 
                 if let last = conversation.lastMessage {
                     Text(last.content)
-                        .font(.subheadline)
-                        .foregroundStyle(LeafColors.textSecondary(for: colorScheme))
+                        .font(isUnread ? .subheadline.bold() : .subheadline)
+                        .foregroundStyle(isUnread
+                            ? LeafColors.textPrimary(for: colorScheme)
+                            : LeafColors.textSecondary(for: colorScheme))
                         .lineLimit(1)
                 } else {
                     Text("Sohbete başla")
@@ -279,18 +284,31 @@ struct ConversationRow: View {
 
             Spacer()
 
-            if let last = conversation.lastMessage {
-                Text(last.createdAt.formatted(.dateTime.hour().minute()))
-                    .font(.caption)
-                    .foregroundStyle(LeafColors.textTertiary(for: colorScheme))
+            VStack(alignment: .trailing, spacing: 4) {
+                if let last = conversation.lastMessage {
+                    Text(last.createdAt.formatted(.dateTime.hour().minute()))
+                        .font(.caption)
+                        .foregroundStyle(isUnread
+                            ? LeafColors.accent(for: colorScheme)
+                            : LeafColors.textTertiary(for: colorScheme))
+                }
+                if isUnread {
+                    Circle()
+                        .fill(LeafColors.accent(for: colorScheme))
+                        .frame(width: 8, height: 8)
+                }
             }
         }
         .padding(LeafSpacing.md)
-        .background(LeafColors.surfacePrimary(for: colorScheme))
+        .background(isUnread
+            ? LeafColors.accent(for: colorScheme).opacity(0.06)
+            : LeafColors.surfacePrimary(for: colorScheme))
         .clipShape(RoundedRectangle(cornerRadius: LeafRadius.large))
         .overlay {
             RoundedRectangle(cornerRadius: LeafRadius.large)
-                .stroke(LeafColors.borderSubtle(for: colorScheme))
+                .stroke(isUnread
+                    ? LeafColors.accent(for: colorScheme).opacity(0.5)
+                    : LeafColors.borderSubtle(for: colorScheme))
         }
     }
 }
