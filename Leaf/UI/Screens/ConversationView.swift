@@ -34,7 +34,10 @@ struct ConversationView: View {
             PushNotificationService.shared.clearBadge()
         }
         .onDisappear {
-            Task { await socialService.unsubscribe() }
+            Task {
+                await socialService.unsubscribe()
+                await socialService.fetchConversations()
+            }
         }
     }
 
@@ -55,6 +58,7 @@ struct ConversationView: View {
                 .padding(.horizontal, LeafSpacing.md)
                 .padding(.vertical, LeafSpacing.md)
             }
+            .defaultScrollAnchor(.bottom)
             .scrollDismissesKeyboard(.interactively)
             .onTapGesture {
                 isTextFieldFocused = false

@@ -39,11 +39,11 @@ struct ContentView: View {
         .animation(.easeInOut(duration: 0.3), value: auth.isAuthenticated)
         .animation(.easeInOut(duration: 0.25), value: social.profileLoaded)
         .task(id: auth.isAuthenticated) {
-            // oturum değişince profili yeniden yükle
             if auth.isAuthenticated {
                 await social.loadCurrentProfile()
+                // giriş yapılınca hemen subscription başlat ve badge yükle
+                await social.fetchConversations()
             } else {
-                // çıkış yapılınca profil state'ini temizle
                 social.currentProfile = nil
                 social.profileLoaded = false
             }
@@ -68,6 +68,7 @@ struct MainTabView: View {
     @EnvironmentObject private var social: SocialService
     @EnvironmentObject private var pushService: PushNotificationService
     @State private var selectedTab: MainTab = .library
+    @Environment(\.scenePhase) private var scenePhase
 
     @AppStorage("socialFeaturesEnabled") private var socialFeaturesEnabled: Bool = true
 
@@ -97,6 +98,7 @@ struct MainTabView: View {
                     .tabItem {
                         Label("Mesajlar", systemImage: "message.fill")
                     }
+                    .badge(social.unreadCount)
                     .tag(MainTab.inbox)
             }
 
@@ -110,6 +112,12 @@ struct MainTabView: View {
         .onAppear {
             pushService.requestPermissionAndRegister()
             pushService.clearBadge()
+        }
+        // Uygulama ön plana gelince okunmamış sayısını güncelle
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                Task { await social.refreshUnreadCount() }
+            }
         }
         // Bildirime tıklanınca inbox tab'ına geç
         .onReceive(NotificationCenter.default.publisher(for: .navigateToConversation)) { _ in
