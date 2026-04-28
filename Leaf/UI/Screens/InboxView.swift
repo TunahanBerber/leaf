@@ -36,6 +36,11 @@ struct InboxView: View {
                 navigateToConvId = nil
                 navigateToUsername = nil
             }
+            .onReceive(NotificationCenter.default.publisher(for: .navigateToConversation)) { notification in
+                guard let convId = notification.userInfo?["conversationId"] as? String else { return }
+                navigateToUsername = notification.userInfo?["username"] as? String ?? "Kullanıcı"
+                navigateToConvId = convId
+            }
             .navigationDestination(item: $navigateToConvId) { convId in
                 ConversationView(
                     conversationId: convId,
