@@ -58,6 +58,7 @@ struct ConversationView: View {
                 .padding(.horizontal, LeafSpacing.md)
                 .padding(.vertical, LeafSpacing.md)
             }
+            .defaultScrollAnchor(.bottom)
             .scrollDismissesKeyboard(.interactively)
             .onTapGesture {
                 isTextFieldFocused = false
