@@ -84,6 +84,8 @@ targets:
         SUPABASE_URL: "https://$(SUPABASE_DOMAIN)"
         SUPABASE_ANON_KEY: "$(SUPABASE_ANON_KEY)"
         SENTRY_DSN: "$(SENTRY_DSN)"
+    entitlements:
+      path: Leaf/Leaf.entitlements
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.tunahan.leaf

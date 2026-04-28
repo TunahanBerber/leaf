@@ -31,6 +31,7 @@ struct ConversationView: View {
         .task {
             await socialService.fetchMessages(conversationId: conversationId)
             await socialService.subscribeToMessages(conversationId: conversationId)
+            PushNotificationService.shared.clearBadge()
         }
         .onDisappear {
             Task { await socialService.unsubscribe() }

@@ -66,6 +66,7 @@ struct MainTabView: View {
     @EnvironmentObject private var auth: SupabaseAuthService
     @EnvironmentObject private var store: BookStore
     @EnvironmentObject private var social: SocialService
+    @EnvironmentObject private var pushService: PushNotificationService
     @State private var selectedTab: MainTab = .library
 
     @AppStorage("socialFeaturesEnabled") private var socialFeaturesEnabled: Bool = true
@@ -106,6 +107,14 @@ struct MainTabView: View {
                 .tag(MainTab.wishlist)
         }
         .tint(LeafColors.primaryLight)
+        .onAppear {
+            pushService.requestPermissionAndRegister()
+            pushService.clearBadge()
+        }
+        // Bildirime tıklanınca inbox tab'ına geç
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToConversation)) { _ in
+            if showSocial { selectedTab = .inbox }
+        }
     }
 }
 

@@ -37,6 +37,7 @@
 		BFDFEA252462C6C147479AF6 /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4152A273FD81613992DF338A /* EmptyStateView.swift */; };
 		D0D4442EA7B641433275248C /* SocialModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 298A8537AA032AD7646D9095 /* SocialModels.swift */; };
 		D18ABDD8BA891CA52B93A435 /* OpenLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9AD3061DFBC03FB3BD51AE5 /* OpenLibraryService.swift */; };
+		D3046EDF04CFE21156D3B18E /* PushNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17E6BF95B2ACEC62DE2EDBD /* PushNotificationService.swift */; };
 		D5006A61065DFD63C4C735F5 /* ConversationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD6374B3AF95CFE0410B78E7 /* ConversationView.swift */; };
 		D6BB9BB04740A88F48702110 /* ProfileSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BBCBDF099E6A9EC850C0F75 /* ProfileSetupView.swift */; };
 		DB3BA865D1FD52AAB0AEB9EE /* LeafTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9A1DE7F581BDB87B5B2F264 /* LeafTokens.swift */; };
@@ -77,12 +78,14 @@
 		CFF7D276740E9B0B7B9B0C02 /* LeafComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeafComponents.swift; sourceTree = "<group>"; };
 		D131E2722C9707B0B0486726 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D74E6ECDE26CCF8692B9F248 /* BookDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookDetailView.swift; sourceTree = "<group>"; };
+		E17E6BF95B2ACEC62DE2EDBD /* PushNotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationService.swift; sourceTree = "<group>"; };
 		E5BC193F592725B909CB26A7 /* WishlistView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WishlistView.swift; sourceTree = "<group>"; };
 		ED6E106B22E444D42C6AFC0A /* BookStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookStore.swift; sourceTree = "<group>"; };
 		EFEFDA2B07427BC7972A3139 /* AddBookView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddBookView.swift; sourceTree = "<group>"; };
 		F381B42281C77F096D06D912 /* UserProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfileView.swift; sourceTree = "<group>"; };
 		F9A1DE7F581BDB87B5B2F264 /* LeafTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeafTokens.swift; sourceTree = "<group>"; };
 		F9AD3061DFBC03FB3BD51AE5 /* OpenLibraryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenLibraryService.swift; sourceTree = "<group>"; };
+		F9BC81E1B0BF7C333836A328 /* Leaf.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Leaf.entitlements; sourceTree = "<group>"; };
 		FC3DC19C42591CFD3B9ABCEE /* SocialService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -135,6 +138,7 @@
 		210A2004C8B331BC2DE64002 /* Leaf */ = {
 			isa = PBXGroup;
 			children = (
+				F9BC81E1B0BF7C333836A328 /* Leaf.entitlements */,
 				28A91A907C4FAA5ABB2EAB51 /* App */,
 				E3A1F686A2429F84170D7F79 /* Core */,
 				AF0875D6721C1816C1DE2202 /* Resources */,
@@ -196,6 +200,7 @@
 				ED6E106B22E444D42C6AFC0A /* BookStore.swift */,
 				085D396B5556D97DF6B1F83E /* NetworkHelper.swift */,
 				F9AD3061DFBC03FB3BD51AE5 /* OpenLibraryService.swift */,
+				E17E6BF95B2ACEC62DE2EDBD /* PushNotificationService.swift */,
 				FC3DC19C42591CFD3B9ABCEE /* SocialService.swift */,
 				62F3248C082FA82BE2D8BEAD /* SupabaseAuthService.swift */,
 				666AA8349D78A37CC88DE286 /* SupabaseConfig.swift */,
@@ -270,7 +275,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1430;
+				LastUpgradeCheck = 2640;
 			};
 			buildConfigurationList = 1A2A2803F75CC9E06E126F21 /* Build configuration list for PBXProject "Leaf" */;
 			developmentRegion = en;
@@ -337,6 +342,7 @@
 				8F65624276FFCF4E2ACB8ACD /* NetworkHelper.swift in Sources */,
 				D18ABDD8BA891CA52B93A435 /* OpenLibraryService.swift in Sources */,
 				D6BB9BB04740A88F48702110 /* ProfileSetupView.swift in Sources */,
+				D3046EDF04CFE21156D3B18E /* PushNotificationService.swift in Sources */,
 				1CD5698A8D4BA595CF34FCBF /* SettingsView.swift in Sources */,
 				D0D4442EA7B641433275248C /* SocialModels.swift in Sources */,
 				1CD3359E6CAF263C3FEDF50B /* SocialService.swift in Sources */,
@@ -357,9 +363,9 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = Leaf/Leaf.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 3;
-				DEVELOPMENT_TEAM = V76H5YC47J;
 				INFOPLIST_FILE = Leaf/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -376,6 +382,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -407,8 +414,10 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = V76H5YC47J;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -422,6 +431,7 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 6.0;
@@ -435,9 +445,9 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = Leaf/Leaf.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 3;
-				DEVELOPMENT_TEAM = V76H5YC47J;
 				INFOPLIST_FILE = Leaf/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -454,6 +464,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -485,8 +496,10 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = V76H5YC47J;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -507,6 +520,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 6.0;
