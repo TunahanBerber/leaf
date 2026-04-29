@@ -1,6 +1,11 @@
 import { supabase } from './supabase';
 import { User } from '@supabase/supabase-js';
+import { Platform } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+import * as QueryParams from 'expo-auth-session/build/QueryParams';
+import { makeRedirectUri } from 'expo-auth-session';
 
+WebBrowser.maybeCompleteAuthSession();
 export class AuthService {
     /**
      * Listen to auth state changes
@@ -45,6 +50,70 @@ export class AuthService {
             throw new Error(this.mapAuthError(error));
         }
         return data.user;
+    }
+
+    /**
+     * Sign in with Google OAuth
+     */
+    static async signInWithGoogle(): Promise<User | null> {
+        if (Platform.OS === 'web') {
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+            });
+            if (error) {
+                throw new Error(this.mapAuthError(error));
+            }
+            // For web, it redirects the entire page, so execution stops here.
+            return null;
+        }
+
+        const redirectTo = makeRedirectUri();
+        
+        const { data, error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo,
+                skipBrowserRedirect: true,
+            },
+        });
+        
+        if (error) {
+            throw new Error(this.mapAuthError(error));
+        }
+
+        if (!data?.url) {
+            throw new Error('Google giriş bağlantısı oluşturulamadı.');
+        }
+
+        const res = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+
+        if (res.type === 'success') {
+            const { url } = res;
+            const { params, errorCode } = QueryParams.getQueryParams(url);
+
+            if (errorCode) {
+                throw new Error(errorCode);
+            }
+
+            const { access_token, refresh_token } = params;
+
+            if (!access_token || !refresh_token) {
+                return null;
+            }
+
+            const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+                access_token,
+                refresh_token,
+            });
+
+            if (sessionError) {
+                throw new Error(this.mapAuthError(sessionError));
+            }
+
+            return sessionData.user;
+        }
+
+        return null;
     }
 
     /**

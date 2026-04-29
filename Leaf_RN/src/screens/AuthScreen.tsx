@@ -40,6 +40,18 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ isDark = false }) => {
         }
     };
 
+    const handleGoogleAuth = async () => {
+        setIsLoading(true);
+        setErrorMessage('');
+        try {
+            await AuthService.signInWithGoogle();
+        } catch (e: any) {
+            setErrorMessage(e.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const resetPassword = async () => {
         if (!email) {
             setErrorMessage("Lütfen önce email adresinizi girin.");
@@ -126,7 +138,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ isDark = false }) => {
                         <View style={[styles.divider, { backgroundColor: theme.borderPrimary }]} />
                     </View>
 
-                    <TouchableOpacity style={[styles.googleButton, { backgroundColor: theme.surfacePrimary, borderColor: theme.borderPrimary }]}>
+                    <TouchableOpacity 
+                        style={[styles.googleButton, { backgroundColor: theme.surfacePrimary, borderColor: theme.borderPrimary }]}
+                        onPress={handleGoogleAuth}
+                        disabled={isLoading}
+                    >
                         <Text style={[styles.googleText, { color: theme.textPrimary }]}>G</Text>
                         <Text style={[styles.googleTextMain, { color: theme.textPrimary }]}>Google ile Devam Et</Text>
                     </TouchableOpacity>

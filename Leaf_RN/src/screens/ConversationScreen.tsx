@@ -5,7 +5,7 @@ import { getTheme, Theme } from '../components/theme';
 import { SocialService } from '../services/SocialService';
 import { supabase } from '../services/supabase';
 import { Message } from '../models';
-import { ArrowLeft, ArrowUpCircle, Trash2 } from 'lucide-react-native';
+import { ArrowLeft, ArrowUpCircle, Trash2, MoreVertical } from 'lucide-react-native';
 import { useAppTheme } from '../components/ThemeContext';
 
 export const ConversationScreen: React.FC<any> = ({ route, navigation }) => {
@@ -17,6 +17,7 @@ export const ConversationScreen: React.FC<any> = ({ route, navigation }) => {
     const [inputText, setInputText] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [currentUserId, setCurrentUserId] = useState<string>('');
+    const [showMenu, setShowMenu] = useState(false);
     const scrollViewRef = useRef<ScrollView>(null);
 
     useEffect(() => {
@@ -56,28 +57,80 @@ export const ConversationScreen: React.FC<any> = ({ route, navigation }) => {
     };
 
     const handleDeleteMessage = (msg: Message) => {
-        Alert.alert('Sil', 'Mesajı silmek istiyor musunuz?', [
-            { text: 'İptal', style: 'cancel' },
-            {
-                text: 'Sil', style: 'destructive', onPress: async () => {
-                    await SocialService.deleteMessage(msg.id);
+        if (Platform.OS === 'web') {
+            const confirmed = window.confirm('Mesajı silmek istiyor musunuz?');
+            if (confirmed) {
+                SocialService.deleteMessage(msg.id).then(() => {
                     setMessages(prev => prev.filter(m => m.id !== msg.id));
-                }
+                });
             }
-        ]);
+        } else {
+            Alert.alert('Sil', 'Mesajı silmek istiyor musunuz?', [
+                { text: 'İptal', style: 'cancel' },
+                {
+                    text: 'Sil', style: 'destructive', onPress: async () => {
+                        await SocialService.deleteMessage(msg.id);
+                        setMessages(prev => prev.filter(m => m.id !== msg.id));
+                    }
+                }
+            ]);
+        }
+    };
+
+    const handleDeleteConversation = () => {
+        setShowMenu(false);
+        if (Platform.OS === 'web') {
+            const confirmed = window.confirm('Sohbeti silmek istediğinize emin misiniz?');
+            if (confirmed) {
+                SocialService.deleteConversation(conversationId).then(() => {
+                    navigation.goBack();
+                }).catch(() => {});
+            }
+        } else {
+            Alert.alert('Emin misiniz?', 'Sohbeti silmek istediğinize emin misiniz?', [
+                { text: 'İptal', style: 'cancel' },
+                {
+                    text: 'Sil', style: 'destructive', onPress: async () => {
+                        try {
+                            await SocialService.deleteConversation(conversationId);
+                            navigation.goBack();
+                        } catch (e) { }
+                    }
+                }
+            ]);
+        }
     };
 
     return (
         <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
             <LeafGradientBackground isDark={isDark} />
 
-            <View style={[styles.header, { borderBottomColor: theme.borderSubtle, borderBottomWidth: 1 }]}>
+            <View style={[styles.header, { borderBottomColor: theme.borderSubtle, borderBottomWidth: 1, zIndex: 10 }]}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 8 }}>
                     <ArrowLeft color={theme.textPrimary} size={24} />
                 </TouchableOpacity>
                 <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>{otherUsername}</Text>
-                <View style={{ width: 40 }} />
+                <TouchableOpacity onPress={() => setShowMenu(!showMenu)} style={{ padding: 8 }}>
+                    <MoreVertical color={theme.textPrimary} size={24} />
+                </TouchableOpacity>
+                
+                {showMenu && (
+                    <View style={{ position: 'absolute', top: 60, right: 16, backgroundColor: theme.surfacePrimary, borderRadius: 8, elevation: 5, zIndex: 1000, borderWidth: 1, borderColor: theme.borderSubtle }}>
+                        <TouchableOpacity onPress={handleDeleteConversation} style={{ paddingHorizontal: 20, paddingVertical: 14 }}>
+                            <Text style={{ color: '#FF3B30', fontSize: 16, fontWeight: '600' }}>Sohbeti Sil</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
             </View>
+
+            {/* If menu is open, add an invisible touchable to close it when clicking elsewhere */}
+            {showMenu && (
+                <TouchableOpacity 
+                    style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, zIndex: 9 }} 
+                    activeOpacity={1} 
+                    onPress={() => setShowMenu(false)} 
+                />
+            )}
 
             {isLoading ? (
                 <View style={styles.center}>

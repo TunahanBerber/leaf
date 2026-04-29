@@ -63,7 +63,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose, isDark 
             await AsyncStorage.setItem('appTheme', appTheme);
             DeviceEventEmitter.emit('socialSettingsChanged', socialEnabled);
             DeviceEventEmitter.emit('appThemeChanged', appTheme);
-            Alert.alert("Kaydedildi", "Profil bilgilerin güncellendi.");
+            onClose();
         } catch (e) {
             console.error(e);
         } finally {
@@ -126,17 +126,26 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose, isDark 
                     <View style={styles.divider} />
                     <LeafTextField title="Kullanıcı Adı" text={username} onChangeText={setUsername} isDark={isDark} />
                     <LeafTextField title="Biyografi" text={bio} onChangeText={setBio} placeholder="Kendini tanıt..." isDark={isDark} />
+                    <LeafTextField title="Yaş" text={age !== null ? age.toString() : ''} onChangeText={() => {}} editable={false} isDark={isDark} />
                 </View>
 
-                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>Sohbet</Text>
-                <View style={[styles.section, { backgroundColor: theme.surfacePrimary, borderColor: theme.borderSubtle, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
-                    <View>
-                        <Text style={[styles.rowTitle, { color: theme.textPrimary }]}>Sosyal Özellikler</Text>
-                        <Text style={[styles.rowSubtitle, { color: theme.textTertiary }]}>Keşfet ve Mesajlar sekmelerini göster</Text>
-                    </View>
-                    <Switch value={socialEnabled} onValueChange={handleSocialToggle} trackColor={{ true: theme.primary }} />
-                </View>
-                <Text style={[styles.footerText, { color: theme.textTertiary }]}>Kapatırsanız Keşfet ve Mesajlar sekmeleri gizlenir, sohbetleriniz silinmez.</Text>
+                {!(age !== null && age < 18) && (
+                    <>
+                        <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>Sohbet</Text>
+                        <View style={[styles.section, { backgroundColor: theme.surfacePrimary, borderColor: theme.borderSubtle, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+                            <View>
+                                <Text style={[styles.rowTitle, { color: theme.textPrimary }]}>Sosyal Özellikler</Text>
+                                <Text style={[styles.rowSubtitle, { color: theme.textTertiary }]}>Keşfet ve Mesajlar sekmelerini göster</Text>
+                            </View>
+                            <Switch 
+                                value={socialEnabled} 
+                                onValueChange={handleSocialToggle} 
+                                trackColor={{ true: theme.primary }} 
+                            />
+                        </View>
+                        <Text style={[styles.footerText, { color: theme.textTertiary }]}>Kapatırsanız Keşfet ve Mesajlar sekmeleri gizlenir, sohbetleriniz silinmez.</Text>
+                    </>
+                )}
 
                 <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>Görünüm</Text>
                 <TouchableOpacity

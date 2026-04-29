@@ -90,10 +90,14 @@ export class SocialService {
      * Discover Users using RPC call
      */
     static async discoverUsers(): Promise<UserProfile[]> {
+        const { data: session } = await supabase.auth.getSession();
+        const userId = session?.session?.user.id.toLowerCase();
+        if (!userId) return [];
+
         const { data, error } = await supabase.rpc('discover_users');
         if (error || !data) throw new Error('Kullanıcılar yüklenemedi.');
 
-        return data.map((u: any) => ({
+        const users = data.map((u: any) => ({
             id: u.profile_id,
             username: u.username,
             avatarUrl: u.avatar_url,
@@ -101,6 +105,23 @@ export class SocialService {
             age: u.age,
             commonBookTitles: u.common_book_titles
         }));
+
+        const { data: allReqs } = await supabase.from('conversation_requests').select('*').or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
+        const { data: allConvs } = await supabase.from('conversations').select('*').or(`user_a_id.eq.${userId},user_b_id.eq.${userId}`);
+
+        const excludeSet = new Set<string>();
+        if (allReqs) {
+            allReqs.forEach((r: any) => {
+                excludeSet.add(r.sender_id === userId ? r.receiver_id : r.sender_id);
+            });
+        }
+        if (allConvs) {
+            allConvs.forEach((c: any) => {
+                excludeSet.add(c.user_a_id === userId ? c.user_b_id : c.user_a_id);
+            });
+        }
+
+        return users.filter((u: any) => !excludeSet.has(u.id) && u.id !== userId);
     }
 
     /**
@@ -196,7 +217,16 @@ export class SocialService {
 
         const { data: convs, error } = await supabase
             .from('conversations')
-            .select('*')
+            .select(`
+                *,
+                messages (
+                    id,
+                    sender_id,
+                    content,
+                    is_read,
+                    created_at
+                )
+            `)
             .or(`user_a_id.eq.${userId},user_b_id.eq.${userId}`)
             .order('created_at', { ascending: false });
 
@@ -214,13 +244,29 @@ export class SocialService {
             }
         }
 
-        return convs.map(c => ({
-            id: c.id,
-            userAId: c.user_a_id,
-            userBId: c.user_b_id,
-            createdAt: c.created_at,
-            otherUser: profileMap[c.user_a_id === userId ? c.user_b_id : c.user_a_id]
-        }));
+        return convs.map((c: any) => {
+            let lastMessage = undefined;
+            if (c.messages && c.messages.length > 0) {
+                const sorted = c.messages.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                const m = sorted[0];
+                lastMessage = {
+                    id: m.id,
+                    conversationId: c.id,
+                    senderId: m.sender_id,
+                    content: m.content,
+                    isRead: m.is_read,
+                    createdAt: m.created_at
+                };
+            }
+            return {
+                id: c.id,
+                userAId: c.user_a_id,
+                userBId: c.user_b_id,
+                createdAt: c.created_at,
+                otherUser: profileMap[c.user_a_id === userId ? c.user_b_id : c.user_a_id],
+                lastMessage
+            };
+        });
     }
 
     static async fetchMessages(conversationId: string): Promise<Message[]> {

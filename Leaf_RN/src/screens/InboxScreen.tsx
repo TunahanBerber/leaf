@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, DeviceEventEmitter, Animated, PanResponder, Dimensions, Platform } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { LeafGradientBackground } from '../components/LeafGradientBackground';
 import { getTheme, Theme } from '../components/theme';
@@ -7,6 +7,87 @@ import { SocialService } from '../services/SocialService';
 import { Conversation, ConversationRequest } from '../models';
 import { MessageSquareOff, Trash2, Check, X } from 'lucide-react-native';
 import { useAppTheme } from '../components/ThemeContext';
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
+
+const SwipeableConversationItem = ({ conv, onPress, onDelete, theme, isDark }: any) => {
+    const pan = useRef(new Animated.Value(0)).current;
+    
+    const panResponder = useRef(
+        PanResponder.create({
+            onStartShouldSetPanResponder: () => false,
+            onMoveShouldSetPanResponder: (evt, gestureState) => {
+                return gestureState.dx < -15 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
+            },
+            onPanResponderMove: (evt, gestureState) => {
+                if (gestureState.dx < 0) {
+                    pan.setValue(Math.max(gestureState.dx, -SCREEN_WIDTH));
+                }
+            },
+            onPanResponderRelease: (evt, gestureState) => {
+                if (gestureState.dx < -150) {
+                    Animated.spring(pan, { toValue: 0, useNativeDriver: false }).start();
+                    onDelete(conv);
+                } else if (gestureState.dx < -60) {
+                    Animated.spring(pan, { toValue: -80, useNativeDriver: false }).start();
+                } else {
+                    Animated.spring(pan, { toValue: 0, useNativeDriver: false }).start();
+                }
+            },
+            onPanResponderTerminate: () => {
+                Animated.spring(pan, { toValue: 0, useNativeDriver: false }).start();
+            }
+        })
+    ).current;
+
+    const lastMsg = conv.lastMessage;
+    const isUnread = lastMsg && !lastMsg.isRead && lastMsg.senderId === conv.otherUser?.id;
+
+    const solidBg = isDark ? '#0A0A0A' : theme.surfacePrimary;
+
+    // Fade in the red background only when swiping left to prevent border bleed
+    const deleteOpacity = pan.interpolate({
+        inputRange: [-20, 0],
+        outputRange: [1, 0],
+        extrapolate: 'clamp'
+    });
+
+    return (
+        <View style={{ marginBottom: 8, position: 'relative' }}>
+            <Animated.View style={{ position: 'absolute', left: 1, right: 1, top: 1, bottom: 1, backgroundColor: '#FF3B30', borderRadius: Theme.radius.large, justifyContent: 'center', alignItems: 'flex-end', opacity: deleteOpacity }}>
+                <TouchableOpacity onPress={() => onDelete(conv)} style={{ width: 80, height: '100%', justifyContent: 'center', alignItems: 'center' }}>
+                    <Trash2 size={24} color="#FFF" />
+                </TouchableOpacity>
+            </Animated.View>
+
+            <Animated.View style={{ transform: [{ translateX: pan }] }} {...panResponder.panHandlers}>
+                <TouchableOpacity
+                    style={[styles.convCard, { backgroundColor: solidBg, borderColor: theme.borderSubtle, marginBottom: 0, width: '100%' }]}
+                    onPress={() => {
+                        pan.setValue(0);
+                        onPress(conv);
+                    }}
+                    activeOpacity={0.8}
+                >
+                    <View style={[styles.avatar, { backgroundColor: 'rgba(47, 125, 92, 0.15)' }]}>
+                        <Text style={[styles.avatarText, { color: theme.primary }]}>
+                            {(conv.otherUser?.username || 'K').charAt(0).toUpperCase()}
+                        </Text>
+                    </View>
+                    <View style={styles.convInfo}>
+                        <Text style={[styles.reqName, { color: theme.textPrimary }]}>{conv.otherUser?.username || 'Kullanıcı'}</Text>
+                        <Text style={[styles.reqSub, { color: isUnread ? theme.textPrimary : theme.textSecondary, fontWeight: isUnread ? 'bold' : 'normal' }]} numberOfLines={1}>
+                            {lastMsg ? lastMsg.content : 'Sohbete başla'}
+                        </Text>
+                    </View>
+                    {isUnread && (
+                        <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: theme.primary }} />
+                    )}
+                </TouchableOpacity>
+            </Animated.View>
+        </View>
+    );
+};
 
 export const InboxScreen: React.FC<any> = ({ navigation }) => {
     const { isDark } = useAppTheme();
@@ -29,6 +110,7 @@ export const InboxScreen: React.FC<any> = ({ navigation }) => {
             const convs = await SocialService.fetchConversations();
             setRequests(reqs);
             setConversations(convs);
+            DeviceEventEmitter.emit('requestsUpdated', reqs.length);
         } catch (e) {
             console.error(e);
         } finally {
@@ -53,17 +135,27 @@ export const InboxScreen: React.FC<any> = ({ navigation }) => {
     };
 
     const handleDeleteConversation = async (conv: Conversation) => {
-        Alert.alert('Emin misiniz?', 'Sohbeti silmek istediğinize emin misiniz?', [
-            { text: 'İptal', style: 'cancel' },
-            {
-                text: 'Sil', style: 'destructive', onPress: async () => {
-                    try {
-                        await SocialService.deleteConversation(conv.id);
-                        await loadData();
-                    } catch (e) { }
-                }
+        if (Platform.OS === 'web') {
+            const confirmed = window.confirm('Sohbeti silmek istediğinize emin misiniz?');
+            if (confirmed) {
+                try {
+                    await SocialService.deleteConversation(conv.id);
+                    await loadData();
+                } catch (e) { }
             }
-        ]);
+        } else {
+            Alert.alert('Emin misiniz?', 'Sohbeti silmek istediğinize emin misiniz?', [
+                { text: 'İptal', style: 'cancel' },
+                {
+                    text: 'Sil', style: 'destructive', onPress: async () => {
+                        try {
+                            await SocialService.deleteConversation(conv.id);
+                            await loadData();
+                        } catch (e) { }
+                    }
+                }
+            ]);
+        }
     };
 
     return (
@@ -119,27 +211,14 @@ export const InboxScreen: React.FC<any> = ({ navigation }) => {
                         <View style={styles.section}>
                             <Text style={[styles.sectionTitle, { color: theme.textSecondary, marginBottom: 8 }]}>Sohbetler</Text>
                             {conversations.map(conv => (
-                                <View key={conv.id} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                    <TouchableOpacity
-                                        style={[styles.convCard, { backgroundColor: theme.surfacePrimary, borderColor: theme.borderSubtle }]}
-                                        onPress={() => navigation.navigate('Conversation', { conversationId: conv.id, otherUsername: conv.otherUser?.username || 'Kullanıcı' })}
-                                    >
-                                        <View style={[styles.avatar, { backgroundColor: 'rgba(47, 125, 92, 0.15)' }]}>
-                                            <Text style={[styles.avatarText, { color: theme.primary }]}>
-                                                {(conv.otherUser?.username || 'K').charAt(0).toUpperCase()}
-                                            </Text>
-                                        </View>
-                                        <View style={styles.convInfo}>
-                                            <Text style={[styles.reqName, { color: theme.textPrimary }]}>{conv.otherUser?.username || 'Kullanıcı'}</Text>
-                                            <Text style={[styles.reqSub, { color: theme.textSecondary }]} numberOfLines={1}>
-                                                Sohbete başla
-                                            </Text>
-                                        </View>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity onPress={() => handleDeleteConversation(conv)} style={{ padding: 10, marginLeft: 4 }}>
-                                        <Trash2 size={20} color="#FF3B30" />
-                                    </TouchableOpacity>
-                                </View>
+                                <SwipeableConversationItem
+                                    key={conv.id}
+                                    conv={conv}
+                                    theme={theme}
+                                    isDark={isDark}
+                                    onPress={(c: any) => navigation.navigate('Conversation', { conversationId: c.id, otherUsername: c.otherUser?.username || 'Kullanıcı' })}
+                                    onDelete={handleDeleteConversation}
+                                />
                             ))}
                         </View>
                     )}
