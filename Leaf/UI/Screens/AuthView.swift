@@ -32,7 +32,7 @@ struct AuthView: View {
                             // tema rengine göre değişiyor
                             .foregroundStyle(LeafColors.accent(for: scheme))
 
-                        Text("Leaf")
+                        Text("SocialLeaf")
                             .font(.largeTitle.bold())
                             .foregroundStyle(LeafColors.textPrimary(for: scheme))
 

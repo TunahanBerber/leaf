@@ -17,7 +17,7 @@ struct PrivacyPolicyView: View {
                                 body: """
                                     Son güncelleme: Mayıs 2026
 
-                                    Leaf uygulamasını kullandığınızda bazı kişisel verileriniz işlenmektedir. \
+                                    SocialLeaf uygulamasını kullandığınızda bazı kişisel verileriniz işlenmektedir. \
                                     Bu politika, hangi verilerin toplandığını, neden toplandığını ve nasıl \
                                     kullanıldığını açıklamaktadır.
                                     """
@@ -67,7 +67,7 @@ struct PrivacyPolicyView: View {
                                 title: "İletişim",
                                 body: """
                                     Gizlilik ile ilgili sorularınız için:
-                                    tunahanberber123@gmail.com
+                                    socialleaf.app@gmail.com
                                     """
                             )
                         }
