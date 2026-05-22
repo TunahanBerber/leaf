@@ -30,11 +30,12 @@ struct InboxView: View {
             .task {
                 await socialService.fetchPendingRequests()
                 await socialService.fetchConversations()
+                await socialService.subscribeToInbox()
             }
             .onDisappear {
-                // Tab değiştirilince navigation state'ini sıfırla
                 navigateToConvId = nil
                 navigateToUsername = nil
+                Task { await socialService.unsubscribeFromInbox() }
             }
             .onReceive(NotificationCenter.default.publisher(for: .navigateToConversation)) { notification in
                 guard let convId = notification.userInfo?["conversationId"] as? String else { return }

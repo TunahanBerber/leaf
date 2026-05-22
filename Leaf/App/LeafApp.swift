@@ -64,7 +64,7 @@ struct LeafApp: App {
                 .task(id: auth.isAuthenticated) {
                     if !auth.isAuthenticated {
                         await pushService.removeToken()
-                        await social.unsubscribeInbox()
+                        await social.unsubscribeFromInbox()
                     }
                 }
         }

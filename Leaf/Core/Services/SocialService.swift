@@ -41,12 +41,10 @@ final class SocialService: ObservableObject {
     @Published var messages: [Message] = []
     @Published var isLoading = false
     @Published var error: String?
+    @Published var unreadCount: Int = 0
 
     // profil henüz yüklenmedi mi (nil) vs yüklendi ama yok (currentProfile == nil)
     @Published var profileLoaded = false
-    @Published var unreadCount: Int = 0
-
-    private var currentUserId: String = ""
 
     // 18 yaş altı sosyal özelliklere erişemez
     var isSocialAllowed: Bool {
@@ -56,8 +54,6 @@ final class SocialService: ObservableObject {
 
     private var realtimeChannel: RealtimeChannelV2?
     private var inboxChannel: RealtimeChannelV2?
-
-    private struct MinimalMessage: Decodable { let id: String }
 
     // MARK: - Profil Yükleme
 
@@ -304,7 +300,6 @@ final class SocialService: ObservableObject {
 
     func fetchConversations() async {
         guard let userId = try? await supabase.auth.session.user.id.uuidString.lowercased() else { return }
-        currentUserId = userId
         isLoading = true
         defer { isLoading = false }
 
@@ -317,10 +312,12 @@ final class SocialService: ObservableObject {
                 .execute()
                 .value
 
+            // diğer kullanıcıların ID'lerini topla
             let otherIds = convs.map { conv -> String in
                 conv.userAId == userId ? conv.userBId : conv.userAId
             }
 
+            // profilleri tek sorguda çek
             if !otherIds.isEmpty {
                 let profiles: [ProfileRecord] = (try? await supabase
                     .from("profiles")
@@ -337,9 +334,9 @@ final class SocialService: ObservableObject {
                 }
             }
 
-            // her sohbetin son mesajını çek
-            if !convs.isEmpty {
-                let convIds = convs.map { $0.id }
+            // Her sohbetin son mesajını çek
+            let convIds = convs.map(\.id)
+            if !convIds.isEmpty {
                 let allMessages: [Message] = (try? await supabase
                     .from("messages")
                     .select()
@@ -348,112 +345,37 @@ final class SocialService: ObservableObject {
                     .execute()
                     .value) ?? []
 
-                var latestByConv: [String: Message] = [:]
-                for msg in allMessages {
-                    if latestByConv[msg.conversationId] == nil {
-                        latestByConv[msg.conversationId] = msg
-                    }
+                var lastMessageMap: [String: Message] = [:]
+                for msg in allMessages where lastMessageMap[msg.conversationId] == nil {
+                    lastMessageMap[msg.conversationId] = msg
                 }
                 for i in convs.indices {
-                    convs[i].lastMessage = latestByConv[convs[i].id]
+                    convs[i].lastMessage = lastMessageMap[convs[i].id]
                 }
             }
 
             conversations = convs
-
-            // toplam okunmamış mesaj sayısını DB'den çek
-            let convIds = convs.map { $0.id }
-            if !convIds.isEmpty {
-                let unread: [MinimalMessage] = (try? await supabase
-                    .from("messages")
-                    .select("id")
-                    .in("conversation_id", values: convIds)
-                    .neq("sender_id", value: userId)
-                    .eq("is_read", value: false)
-                    .execute()
-                    .value) ?? []
-                unreadCount = unread.count
-            } else {
-                unreadCount = 0
-            }
-
-            if inboxChannel == nil { await subscribeToInboxUpdates() }
+            await refreshUnreadCount()
         } catch {
             self.error = "Sohbetler yüklenemedi."
         }
     }
 
-    // hızlı count query — scenePhase ve logout dışında çağrılır
     func refreshUnreadCount() async {
         guard let userId = try? await supabase.auth.session.user.id.uuidString.lowercased() else { return }
-
-        var convIds = conversations.map { $0.id }
-        if convIds.isEmpty {
-            let convs: [Conversation] = (try? await supabase
-                .from("conversations")
-                .select()
-                .or("user_a_id.eq.\(userId),user_b_id.eq.\(userId)")
-                .execute()
-                .value) ?? []
-            convIds = convs.map { $0.id }
+        let convIds = conversations.map(\.id)
+        guard !convIds.isEmpty else {
+            unreadCount = 0
+            return
         }
-        guard !convIds.isEmpty else { unreadCount = 0; return }
-
-        let unread: [MinimalMessage] = (try? await supabase
+        let response = try? await supabase
             .from("messages")
-            .select("id")
+            .select("*", head: true, count: .exact)
             .in("conversation_id", values: convIds)
-            .neq("sender_id", value: userId)
             .eq("is_read", value: false)
+            .neq("sender_id", value: userId)
             .execute()
-            .value) ?? []
-        unreadCount = unread.count
-    }
-
-    // gelen mesajları global olarak dinle — unreadCount'u real-time günceller
-    private func subscribeToInboxUpdates() async {
-        let channel = supabase.channel("inbox-\(currentUserId)")
-        let insertions = channel.postgresChange(InsertAction.self, schema: "public", table: "messages")
-        await channel.subscribe()
-        inboxChannel = channel
-
-        Task { [weak self] in
-            for await insertion in insertions {
-                guard let self else { break }
-                let record = insertion.record
-                guard
-                    let senderId = record["sender_id"]?.stringValue,
-                    senderId != self.currentUserId,
-                    let convId = record["conversation_id"]?.stringValue,
-                    self.conversations.contains(where: { $0.id == convId })
-                else { continue }
-
-                guard
-                    let id      = record["id"]?.stringValue,
-                    let content = record["content"]?.stringValue
-                else { continue }
-
-                let createdAtStr = record["created_at"]?.stringValue ?? ""
-                let formatter = ISO8601DateFormatter()
-                formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-                let createdAt = formatter.date(from: createdAtStr) ?? Date()
-
-                await MainActor.run {
-                    self.unreadCount += 1
-                    if let idx = self.conversations.firstIndex(where: { $0.id == convId }) {
-                        self.conversations[idx].lastMessage = Message(
-                            id: id, conversationId: convId, senderId: senderId,
-                            content: content, isRead: false, createdAt: createdAt
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    func unsubscribeInbox() async {
-        await inboxChannel?.unsubscribe()
-        inboxChannel = nil
+        unreadCount = response?.count ?? 0
     }
 
     // sadece mevcut sohbeti döner, yoksa nil — yeni sohbet OLUŞTURMAZ
@@ -518,6 +440,7 @@ final class SocialService: ObservableObject {
 
             messages = msgs
             await markAsRead(conversationId: conversationId)
+            await refreshUnreadCount()
         } catch {
             self.error = "Mesajlar yüklenemedi."
         }
@@ -588,11 +511,6 @@ final class SocialService: ObservableObject {
             .neq("sender_id", value: userId)
             .eq("is_read", value: false)
             .execute()
-
-        if let idx = conversations.firstIndex(where: { $0.id == conversationId }) {
-            conversations[idx].lastMessage?.isRead = true
-        }
-        await refreshUnreadCount()
     }
 
     // MARK: - Realtime
@@ -667,6 +585,106 @@ final class SocialService: ObservableObject {
         if let channel = realtimeChannel {
             await supabase.removeChannel(channel)
             realtimeChannel = nil
+        }
+    }
+
+    // MARK: - Inbox Realtime
+
+    func subscribeToInbox() async {
+        guard let userId = try? await supabase.auth.session.user.id.uuidString.lowercased() else { return }
+
+        await unsubscribeFromInbox()
+
+        let channel = supabase.channel("inbox:\(userId)")
+
+        let newRequests = channel.postgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "conversation_requests",
+            filter: "receiver_id=eq.\(userId)"
+        )
+
+        let deletedRequests = channel.postgresChange(
+            DeleteAction.self,
+            schema: "public",
+            table: "conversation_requests"
+        )
+
+        let newConversations = channel.postgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "conversations"
+        )
+
+        let newMessages = channel.postgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "messages"
+        )
+
+        await channel.subscribe()
+        inboxChannel = channel
+
+        Task { [weak self] in
+            for await _ in newRequests {
+                guard let self else { break }
+                await self.fetchPendingRequests()
+            }
+        }
+
+        Task { [weak self] in
+            for await _ in deletedRequests {
+                guard let self else { break }
+                await self.fetchPendingRequests()
+            }
+        }
+
+        Task { [weak self] in
+            for await _ in newConversations {
+                guard let self else { break }
+                await self.fetchConversations()
+            }
+        }
+
+        Task { [weak self] in
+            for await insertion in newMessages {
+                guard let self else { break }
+                let record = insertion.record
+
+                guard
+                    let id           = record["id"]?.stringValue,
+                    let convId       = record["conversation_id"]?.stringValue,
+                    let senderId     = record["sender_id"]?.stringValue,
+                    let content      = record["content"]?.stringValue,
+                    let createdAtStr = record["created_at"]?.stringValue
+                else { continue }
+
+                let formatter = ISO8601DateFormatter()
+                formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                let createdAt = formatter.date(from: createdAtStr) ?? Date()
+
+                let msg = Message(
+                    id: id,
+                    conversationId: convId,
+                    senderId: senderId,
+                    content: content,
+                    isRead: false,
+                    createdAt: createdAt
+                )
+
+                await MainActor.run {
+                    if let idx = self.conversations.firstIndex(where: { $0.id == convId }) {
+                        self.conversations[idx].lastMessage = msg
+                    }
+                }
+            }
+        }
+    }
+
+    func unsubscribeFromInbox() async {
+        if let channel = inboxChannel {
+            await supabase.removeChannel(channel)
+            inboxChannel = nil
         }
     }
 }
