@@ -17,6 +17,10 @@ struct SettingsView: View {
     @State private var isSaving = false
     @State private var showSaveSuccess = false
     @State private var showSignOutConfirm = false
+    @State private var showDeleteConfirm  = false
+    @State private var showDeleteError    = false
+    @State private var isDeleting         = false
+    @State private var showPrivacyPolicy  = false
 
     var body: some View {
         NavigationStack {
@@ -27,6 +31,7 @@ struct SettingsView: View {
                     profileSection
                     socialSection
                     themeSection
+                    legalSection
                     accountSection
                 }
                 .listStyle(.insetGrouped)
@@ -63,6 +68,31 @@ struct SettingsView: View {
                     Task { await auth.signOut() }
                 }
                 Button("İptal", role: .cancel) { }
+            }
+            .confirmationDialog(
+                "Hesabını kalıcı olarak silmek istediğine emin misin?",
+                isPresented: $showDeleteConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Hesabı Sil", role: .destructive) {
+                    isDeleting = true
+                    Task {
+                        let ok = await auth.deleteAccount()
+                        isDeleting = false
+                        if !ok { showDeleteError = true }
+                    }
+                }
+                Button("İptal", role: .cancel) { }
+            } message: {
+                Text("Tüm verilerin, mesajların ve profilin kalıcı olarak silinecek. Bu işlem geri alınamaz.")
+            }
+            .alert("Hesap Silinemedi", isPresented: $showDeleteError) {
+                Button("Tamam", role: .cancel) { }
+            } message: {
+                Text("Bir hata oluştu. Lütfen tekrar dene.")
+            }
+            .sheet(isPresented: $showPrivacyPolicy) {
+                PrivacyPolicyView()
             }
             .onAppear { loadCurrentValues() }
         }
@@ -177,6 +207,22 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Yasal Bölüm
+
+    private var legalSection: some View {
+        Section {
+            Button {
+                showPrivacyPolicy = true
+            } label: {
+                Label("Gizlilik Politikası", systemImage: "lock.shield")
+                    .foregroundStyle(LeafColors.textPrimary(for: colorScheme))
+            }
+            .listRowBackground(LeafColors.surfacePrimary(for: colorScheme))
+        } header: {
+            Text("Yasal")
+        }
+    }
+
     // MARK: - Hesap Bölümü
 
     private var accountSection: some View {
@@ -188,8 +234,26 @@ struct SettingsView: View {
                     .foregroundStyle(.red)
             }
             .listRowBackground(LeafColors.surfacePrimary(for: colorScheme))
+
+            Button(role: .destructive) {
+                showDeleteConfirm = true
+            } label: {
+                if isDeleting {
+                    HStack {
+                        ProgressView().tint(.red)
+                        Text("Siliniyor...").foregroundStyle(.red)
+                    }
+                } else {
+                    Label("Hesabı Sil", systemImage: "person.crop.circle.badge.minus")
+                        .foregroundStyle(.red)
+                }
+            }
+            .disabled(isDeleting)
+            .listRowBackground(LeafColors.surfacePrimary(for: colorScheme))
         } header: {
             Text("Hesap")
+        } footer: {
+            Text("Hesabını silersen tüm veriler kalıcı olarak kaldırılır.")
         }
     }
 

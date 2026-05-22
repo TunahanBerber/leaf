@@ -12,9 +12,17 @@ struct ConversationView: View {
 
     @State private var messageText = ""
     @FocusState private var isTextFieldFocused: Bool
+    @State private var showBlockConfirm  = false
+    @State private var showReportSheet   = false
+    @State private var showReportSuccess = false
 
     private var currentUserId: String {
         auth.currentUser?.id.uuidString.lowercased() ?? ""
+    }
+
+    private var otherUserId: String? {
+        guard let conv = socialService.conversations.first(where: { $0.id == conversationId }) else { return nil }
+        return conv.userAId == currentUserId ? conv.userBId : conv.userAId
     }
 
     var body: some View {
@@ -28,6 +36,50 @@ struct ConversationView: View {
         }
         .navigationTitle(otherUsername)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button(role: .destructive) {
+                        showBlockConfirm = true
+                    } label: {
+                        Label("Engelle", systemImage: "hand.raised.fill")
+                    }
+                    Button {
+                        showReportSheet = true
+                    } label: {
+                        Label("Şikayet Et", systemImage: "flag.fill")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .foregroundStyle(LeafColors.accent(for: colorScheme))
+                }
+            }
+        }
+        .confirmationDialog(
+            "\(otherUsername) adlı kullanıcıyı engellemek istediğine emin misin?",
+            isPresented: $showBlockConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Engelle", role: .destructive) {
+                guard let uid = otherUserId else { return }
+                Task { await socialService.blockUser(userId: uid) }
+            }
+            Button("İptal", role: .cancel) { }
+        }
+        .sheet(isPresented: $showReportSheet) {
+            ReportSheet(username: otherUsername) { reason in
+                guard let uid = otherUserId else { return }
+                Task {
+                    let ok = await socialService.reportUser(userId: uid, reason: reason)
+                    if ok { showReportSuccess = true }
+                }
+            }
+        }
+        .alert("Şikayet İletildi", isPresented: $showReportSuccess) {
+            Button("Tamam", role: .cancel) { }
+        } message: {
+            Text("Bildirimin alındı. En kısa sürede incelenecek.")
+        }
         .task {
             await socialService.fetchMessages(conversationId: conversationId)
             await socialService.subscribeToMessages(conversationId: conversationId)
@@ -133,6 +185,68 @@ struct ConversationView: View {
         messageText = ""
         Task {
             await socialService.sendMessage(conversationId: conversationId, content: text)
+        }
+    }
+}
+
+// MARK: - Report Sheet
+
+struct ReportSheet: View {
+    let username: String
+    let onSubmit: (String) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var selectedReason: String?
+
+    private let reasons = [
+        "Uygunsuz içerik",
+        "Taciz veya zorbalık",
+        "Spam veya reklam",
+        "Sahte hesap",
+        "Diğer"
+    ]
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                LeafGradientBackground()
+
+                List(reasons, id: \.self) { reason in
+                    Button {
+                        selectedReason = reason
+                    } label: {
+                        HStack {
+                            Text(reason)
+                                .foregroundStyle(LeafColors.textPrimary(for: colorScheme))
+                            Spacer()
+                            if selectedReason == reason {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(LeafColors.accent(for: colorScheme))
+                            }
+                        }
+                    }
+                    .listRowBackground(LeafColors.surfacePrimary(for: colorScheme))
+                }
+                .listStyle(.insetGrouped)
+                .scrollContentBackground(.hidden)
+            }
+            .navigationTitle("\(username) Şikayet Et")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("İptal") { dismiss() }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Gönder") {
+                        guard let reason = selectedReason else { return }
+                        onSubmit(reason)
+                        dismiss()
+                    }
+                    .disabled(selectedReason == nil)
+                    .fontWeight(.semibold)
+                }
+            }
         }
     }
 }

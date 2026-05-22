@@ -2,6 +2,7 @@
 // giriş ve kayıt ekranı — email/şifre ve Google OAuth buradan çalışıyor
 
 import SwiftUI
+import AuthenticationServices
 
 // MARK: - Auth View
 
@@ -115,14 +116,13 @@ struct AuthView: View {
                                     Image(systemName: "g.circle.fill")
                                         .font(.title3)
                                         .foregroundStyle(LeafColors.textPrimary(for: scheme))
-                                    
+
                                     Text("Google ile Devam Et")
                                         .font(.subheadline.bold())
                                         .foregroundStyle(LeafColors.textPrimary(for: scheme))
                                 }
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 50)
-                                // temaya göre cam hissi
                                 .background(LeafColors.surfacePrimary(for: scheme))
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
                                 .overlay(
@@ -130,6 +130,17 @@ struct AuthView: View {
                                         .stroke(LeafColors.borderPrimary(for: scheme), lineWidth: 0.5)
                                 )
                             }
+
+                            // Apple ile giriş butonu — App Store kuralı 4.8 gereği zorunlu
+                            SignInWithAppleButton(.continue) { request in
+                                request.requestedScopes = [.email, .fullName]
+                                request.nonce = auth.prepareAppleSignIn()
+                            } onCompletion: { result in
+                                Task { await auth.handleAppleSignIn(result) }
+                            }
+                            .signInWithAppleButtonStyle(scheme == .dark ? .white : .black)
+                            .frame(height: 50)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
                         .padding()
                     }

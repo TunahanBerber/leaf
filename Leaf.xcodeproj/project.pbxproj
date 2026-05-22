@@ -39,6 +39,7 @@
 		D18ABDD8BA891CA52B93A435 /* OpenLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9AD3061DFBC03FB3BD51AE5 /* OpenLibraryService.swift */; };
 		D3046EDF04CFE21156D3B18E /* PushNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17E6BF95B2ACEC62DE2EDBD /* PushNotificationService.swift */; };
 		D5006A61065DFD63C4C735F5 /* ConversationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD6374B3AF95CFE0410B78E7 /* ConversationView.swift */; };
+		7FBCB506EB824CFC823B22767F717D0D /* PrivacyPolicyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2A0C60C36744E988B79A6937C2E3E85 /* PrivacyPolicyView.swift */; };
 		D6BB9BB04740A88F48702110 /* ProfileSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BBCBDF099E6A9EC850C0F75 /* ProfileSetupView.swift */; };
 		DB3BA865D1FD52AAB0AEB9EE /* LeafTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9A1DE7F581BDB87B5B2F264 /* LeafTokens.swift */; };
 		DC4E280B18AF653CFD450FA4 /* InboxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761251687E9AC2FE22D666C0 /* InboxView.swift */; };
@@ -67,6 +68,7 @@
 		9757D30E4473E8E99771EA8D /* AddNoteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddNoteView.swift; sourceTree = "<group>"; };
 		A2A654C4362EDCB2A4403423 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		AD6374B3AF95CFE0410B78E7 /* ConversationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationView.swift; sourceTree = "<group>"; };
+		E2A0C60C36744E988B79A6937C2E3E85 /* PrivacyPolicyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyPolicyView.swift; sourceTree = "<group>"; };
 		AE80BFC06CE6E477ACAE74B3 /* Book.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Book.swift; sourceTree = "<group>"; };
 		AEB1D879C2F4C29FEB678566 /* CoverImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverImageView.swift; sourceTree = "<group>"; };
 		AF5F58CE52F17D5D8E4FEFA2 /* LeafColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeafColors.swift; sourceTree = "<group>"; };
@@ -129,6 +131,7 @@
 				C64DBCF8A34357B20E67FAE8 /* LibraryView.swift */,
 				7BBCBDF099E6A9EC850C0F75 /* ProfileSetupView.swift */,
 				079B66E45437B83540285843 /* SettingsView.swift */,
+				E2A0C60C36744E988B79A6937C2E3E85 /* PrivacyPolicyView.swift */,
 				F381B42281C77F096D06D912 /* UserProfileView.swift */,
 				E5BC193F592725B909CB26A7 /* WishlistView.swift */,
 			);
@@ -327,6 +330,7 @@
 				9D40A3537C5631E0DCB78902 /* BookStore.swift in Sources */,
 				91A9C7E442AB4BA7C9170FD4 /* ContentView.swift in Sources */,
 				D5006A61065DFD63C4C735F5 /* ConversationView.swift in Sources */,
+				7FBCB506EB824CFC823B22767F717D0D /* PrivacyPolicyView.swift in Sources */,
 				9E3131AF0263FC6BC60B73D0 /* CoverImageView.swift in Sources */,
 				56387BFE0E9834D41ECC04CD /* DiscoverView.swift in Sources */,
 				BFDFEA252462C6C147479AF6 /* EmptyStateView.swift in Sources */,

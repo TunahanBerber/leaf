@@ -681,6 +681,67 @@ final class SocialService: ObservableObject {
         }
     }
 
+    // MARK: - Engelleme & Şikayet
+
+    // Supabase'de iki tablo gerekli:
+    //
+    // create table public.blocked_users (
+    //   id uuid primary key default gen_random_uuid(),
+    //   blocker_id text not null references public.profiles(id) on delete cascade,
+    //   blocked_id text not null references public.profiles(id) on delete cascade,
+    //   created_at timestamptz default now(),
+    //   unique(blocker_id, blocked_id)
+    // );
+    //
+    // create table public.user_reports (
+    //   id uuid primary key default gen_random_uuid(),
+    //   reporter_id text not null references public.profiles(id) on delete cascade,
+    //   reported_id text not null references public.profiles(id) on delete cascade,
+    //   reason text not null,
+    //   created_at timestamptz default now()
+    // );
+
+    func blockUser(userId: String) async -> Bool {
+        guard let currentId = try? await supabase.auth.session.user.id.uuidString.lowercased() else { return false }
+
+        let entry: [String: AnyJSON] = [
+            "blocker_id": .string(currentId),
+            "blocked_id": .string(userId)
+        ]
+
+        do {
+            try await supabase
+                .from("blocked_users")
+                .insert(entry)
+                .execute()
+            return true
+        } catch {
+            self.error = "Kullanıcı engellenemedi."
+            return false
+        }
+    }
+
+    func reportUser(userId: String, reason: String) async -> Bool {
+        guard let currentId = try? await supabase.auth.session.user.id.uuidString.lowercased() else { return false }
+
+        let entry: [String: AnyJSON] = [
+            "reporter_id": .string(currentId),
+            "reported_id": .string(userId),
+            "reason":      .string(reason)
+        ]
+
+        do {
+            try await supabase
+                .from("user_reports")
+                .insert(entry)
+                .execute()
+            return true
+        } catch {
+            self.error = "Şikayet gönderilemedi."
+            return false
+        }
+    }
+
     func unsubscribeFromInbox() async {
         if let channel = inboxChannel {
             await supabase.removeChannel(channel)

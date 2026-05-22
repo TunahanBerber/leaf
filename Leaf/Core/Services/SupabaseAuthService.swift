@@ -3,6 +3,8 @@
 
 import Foundation
 import Supabase
+import AuthenticationServices
+import CryptoKit
 
 // MARK: - Auth Service
 
@@ -118,6 +120,95 @@ final class SupabaseAuthService: ObservableObject {
         } catch {
             errorMessage = mapAuthError(error)
         }
+    }
+
+    // MARK: - Sign in with Apple
+
+    // Apple isteği hazırlanırken çağrılır — raw nonce saklanır, hashed nonce Apple'a gönderilir
+    private var currentAppleNonce: String?
+
+    func prepareAppleSignIn() -> String {
+        let nonce = randomNonceString()
+        currentAppleNonce = nonce
+        return sha256(nonce)
+    }
+
+    func handleAppleSignIn(_ result: Result<ASAuthorization, Error>) async {
+        switch result {
+        case .failure(let error):
+            let authError = error as? ASAuthorizationError
+            if authError?.code != .canceled {
+                errorMessage = "Apple ile giriş başarısız."
+            }
+            return
+        case .success(let authorization):
+            guard
+                let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+                let tokenData   = credential.identityToken,
+                let idToken     = String(data: tokenData, encoding: .utf8),
+                let nonce       = currentAppleNonce
+            else {
+                errorMessage = "Apple kimlik bilgisi alınamadı."
+                return
+            }
+
+            isLoading = true
+            errorMessage = nil
+            defer { isLoading = false }
+
+            do {
+                try await supabase.auth.signInWithIdToken(
+                    credentials: .init(provider: .apple, idToken: idToken, nonce: nonce)
+                )
+            } catch {
+                errorMessage = "Apple ile giriş yapılamadı."
+            }
+        }
+    }
+
+    // MARK: - Hesap Silme
+
+    // Supabase'de aşağıdaki RPC fonksiyonunu oluşturman gerekiyor:
+    //
+    // create or replace function delete_user_account()
+    // returns void language plpgsql security definer as $$
+    // begin
+    //   delete from public.messages            where sender_id   = auth.uid()::text;
+    //   delete from public.conversations       where user_a_id   = auth.uid()::text
+    //                                             or user_b_id   = auth.uid()::text;
+    //   delete from public.conversation_requests where sender_id = auth.uid()::text
+    //                                               or receiver_id = auth.uid()::text;
+    //   delete from public.device_tokens       where user_id     = auth.uid()::text;
+    //   delete from public.profiles            where id          = auth.uid()::text;
+    //   delete from auth.users                 where id          = auth.uid();
+    // end; $$;
+    func deleteAccount() async -> Bool {
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            try await supabase.rpc("delete_user_account").execute()
+            try? await supabase.auth.signOut()
+            return true
+        } catch {
+            errorMessage = "Hesap silinemedi. Lütfen tekrar dene."
+            return false
+        }
+    }
+
+    // MARK: - Nonce Helpers
+
+    private func randomNonceString(length: Int = 32) -> String {
+        var randomBytes = [UInt8](repeating: 0, count: length)
+        _ = SecRandomCopyBytes(kSecRandomDefault, randomBytes.count, &randomBytes)
+        let charset = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
+        return String(randomBytes.map { charset[Int($0) % charset.count] })
+    }
+
+    private func sha256(_ input: String) -> String {
+        SHA256.hash(data: Data(input.utf8))
+            .compactMap { String(format: "%02x", $0) }
+            .joined()
     }
 
     // MARK: - Error Mapping
