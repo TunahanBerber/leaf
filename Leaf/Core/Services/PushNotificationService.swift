@@ -4,6 +4,7 @@ import Supabase
 
 extension Notification.Name {
     static let navigateToConversation = Notification.Name("navigateToConversation")
+    static let navigateToInbox        = Notification.Name("navigateToInbox")
 }
 
 @MainActor
@@ -91,14 +92,20 @@ extension PushNotificationService: UNUserNotificationCenterDelegate {
         completionHandler([.banner, .sound, .badge])
     }
 
-    // Bildirime tıklandığında ilgili sohbete git
+    // Bildirime tıklandığında yönlendirme yap
     nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
         let userInfo = response.notification.request.content.userInfo
-        if let conversationId = userInfo["conversation_id"] as? String {
+        let type = userInfo["type"] as? String ?? "message"
+
+        if type == "request" {
+            // Arkadaşlık isteği bildirimi → inbox'a git
+            NotificationCenter.default.post(name: .navigateToInbox, object: nil)
+        } else if let conversationId = userInfo["conversation_id"] as? String {
+            // Mesaj bildirimi → ilgili sohbeti aç
             let username = userInfo["sender_username"] as? String ?? "Kullanıcı"
             NotificationCenter.default.post(
                 name: .navigateToConversation,

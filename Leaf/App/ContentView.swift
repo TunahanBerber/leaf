@@ -119,9 +119,16 @@ struct MainTabView: View {
                 Task { await social.refreshUnreadCount() }
             }
         }
-        // Bildirime tıklanınca inbox tab'ına geç
+        // Mesaj bildirimine tıklanınca inbox tab'ına geç
         .onReceive(NotificationCenter.default.publisher(for: .navigateToConversation)) { _ in
             if showSocial { selectedTab = .inbox }
+        }
+        // Arkadaşlık isteği bildirimine tıklanınca inbox tab'ına geç ve istekleri yenile
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToInbox)) { _ in
+            if showSocial {
+                selectedTab = .inbox
+                Task { await social.fetchPendingRequests() }
+            }
         }
     }
 }
