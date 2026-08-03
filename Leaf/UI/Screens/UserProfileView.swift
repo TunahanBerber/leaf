@@ -10,6 +10,10 @@ struct UserProfileView: View {
     @State private var existingConvId: String?        // yüklenen mevcut sohbet ID'si (navigation tetiklemez)
     @State private var navigateToConvId: String?      // sadece kullanıcı butona basınca set edilir
     @State private var showSuccess = false
+    @State private var showBlockConfirm  = false
+    @State private var showReportSheet   = false
+    @State private var showReportSuccess = false
+    @State private var showBlockSuccess  = false
 
     var body: some View {
         ZStack {
@@ -27,6 +31,25 @@ struct UserProfileView: View {
         }
         .navigationTitle(profile.username)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button(role: .destructive) {
+                        showBlockConfirm = true
+                    } label: {
+                        Label("Engelle", systemImage: "hand.raised.fill")
+                    }
+                    Button {
+                        showReportSheet = true
+                    } label: {
+                        Label("Şikayet Et", systemImage: "flag.fill")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .foregroundStyle(LeafColors.accent(for: colorScheme))
+                }
+            }
+        }
         .task { await loadStatus() }
         .navigationDestination(item: $navigateToConvId) { convId in
             ConversationView(conversationId: convId, otherUsername: profile.username)
@@ -36,6 +59,38 @@ struct UserProfileView: View {
             Button("Tamam", role: .cancel) { }
         } message: {
             Text("\(profile.username) isteği kabul ederse sohbet başlayacak.")
+        }
+        .confirmationDialog(
+            "\(profile.username) adlı kullanıcıyı engellemek istediğine emin misin?",
+            isPresented: $showBlockConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Engelle", role: .destructive) {
+                Task {
+                    if await socialService.blockUser(userId: profile.id) {
+                        showBlockSuccess = true
+                    }
+                }
+            }
+            Button("İptal", role: .cancel) { }
+        }
+        .sheet(isPresented: $showReportSheet) {
+            ReportSheet(username: profile.username) { reason, description in
+                Task {
+                    let ok = await socialService.reportUser(userId: profile.id, reason: reason, description: description)
+                    if ok { showReportSuccess = true }
+                }
+            }
+        }
+        .alert("Şikayet İletildi", isPresented: $showReportSuccess) {
+            Button("Tamam", role: .cancel) { }
+        } message: {
+            Text("Bildirimin alındı. En kısa sürede incelenecek.")
+        }
+        .alert("Kullanıcı Engellendi", isPresented: $showBlockSuccess) {
+            Button("Tamam", role: .cancel) { }
+        } message: {
+            Text("\(profile.username) artık sana mesaj gönderemez.")
         }
     }
 

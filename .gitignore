@@ -41,6 +41,9 @@ DerivedData/
 # Secrets — gerçek değerleri içerir, asla commit edilmez
 Config/Secrets.xcconfig
 
+# Admin paneli — service_role ile RLS'i bypass ediyor, repoda gezinmesin
+admin/
+
 #personally
 leaf.md
 RULE.md

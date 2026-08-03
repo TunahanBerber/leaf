@@ -160,6 +160,15 @@ struct SettingsView: View {
             }
             .tint(LeafColors.accent(for: colorScheme))
             .listRowBackground(LeafColors.surfacePrimary(for: colorScheme))
+
+            NavigationLink {
+                BlockedUsersView()
+                    .environmentObject(social)
+            } label: {
+                Label("Engellenen Kullanıcılar", systemImage: "hand.raised.fill")
+                    .foregroundStyle(LeafColors.textPrimary(for: colorScheme))
+            }
+            .listRowBackground(LeafColors.surfacePrimary(for: colorScheme))
         } header: {
             Text("Sohbet")
         } footer: {

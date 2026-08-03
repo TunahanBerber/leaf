@@ -11,6 +11,7 @@
 		04EFABD7CC341FDABD0CA825 /* LeafApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA5FCA73E91A8FF71E3F51C6 /* LeafApp.swift */; };
 		0AC6037AE413AFF0B476FA2B /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 9364E06748B54F491606B620 /* Sentry */; };
 		1CD3359E6CAF263C3FEDF50B /* SocialService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC3DC19C42591CFD3B9ABCEE /* SocialService.swift */; };
+		5BD53265A74F0A8E7E1A53F5 /* ContentFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18DD014F07266610438C87AD /* ContentFilter.swift */; };
 		1CD5698A8D4BA595CF34FCBF /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 079B66E45437B83540285843 /* SettingsView.swift */; };
 		2829730B6CEBA9F2E4754528 /* LeafComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFF7D276740E9B0B7B9B0C02 /* LeafComponents.swift */; };
 		31358FA4A9002E3DA0B586DE /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = C23DD6563B13325962434C85 /* Supabase */; };
@@ -27,6 +28,7 @@
 		60C353BFFC805B5F0DC568C8 /* BookNote.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71BC6F4FD03DEE1C48A40D84 /* BookNote.swift */; };
 		65DFF577427C5FBECE6027AE /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C64DBCF8A34357B20E67FAE8 /* LibraryView.swift */; };
 		7E7D5C073CAB76AB3B2F94C8 /* UserProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F381B42281C77F096D06D912 /* UserProfileView.swift */; };
+		1F9E7877EB46137357F609CA /* BlockedUsersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF2F5274D82715748127AA29 /* BlockedUsersView.swift */; };
 		7FBCB506EB824CFC823B22767F717D0D /* PrivacyPolicyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2A0C60C36744E988B79A6937C2E3E85 /* PrivacyPolicyView.swift */; };
 		80623FE84BDF07A07D3FF278 /* BookSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE5A5F17A5741835E42F3928 /* BookSearchView.swift */; };
 		8F65624276FFCF4E2ACB8ACD /* NetworkHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 085D396B5556D97DF6B1F83E /* NetworkHelper.swift */; };
@@ -85,10 +87,12 @@
 		ED6E106B22E444D42C6AFC0A /* BookStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookStore.swift; sourceTree = "<group>"; };
 		EFEFDA2B07427BC7972A3139 /* AddBookView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddBookView.swift; sourceTree = "<group>"; };
 		F381B42281C77F096D06D912 /* UserProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfileView.swift; sourceTree = "<group>"; };
+		AF2F5274D82715748127AA29 /* BlockedUsersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockedUsersView.swift; sourceTree = "<group>"; };
 		F9A1DE7F581BDB87B5B2F264 /* LeafTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeafTokens.swift; sourceTree = "<group>"; };
 		F9AD3061DFBC03FB3BD51AE5 /* OpenLibraryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenLibraryService.swift; sourceTree = "<group>"; };
 		F9BC81E1B0BF7C333836A328 /* Leaf.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Leaf.entitlements; sourceTree = "<group>"; };
 		FC3DC19C42591CFD3B9ABCEE /* SocialService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialService.swift; sourceTree = "<group>"; };
+		18DD014F07266610438C87AD /* ContentFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentFilter.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -120,6 +124,7 @@
 				EFEFDA2B07427BC7972A3139 /* AddBookView.swift */,
 				9757D30E4473E8E99771EA8D /* AddNoteView.swift */,
 				40AF0594D1EDCDA0EFCD2BF4 /* AuthView.swift */,
+				AF2F5274D82715748127AA29 /* BlockedUsersView.swift */,
 				D74E6ECDE26CCF8692B9F248 /* BookDetailView.swift */,
 				C86C2605FABDA1DF082FAD2F /* BookRecommendationSheet.swift */,
 				CE5A5F17A5741835E42F3928 /* BookSearchView.swift */,
@@ -201,6 +206,7 @@
 			isa = PBXGroup;
 			children = (
 				ED6E106B22E444D42C6AFC0A /* BookStore.swift */,
+				18DD014F07266610438C87AD /* ContentFilter.swift */,
 				085D396B5556D97DF6B1F83E /* NetworkHelper.swift */,
 				F9AD3061DFBC03FB3BD51AE5 /* OpenLibraryService.swift */,
 				E17E6BF95B2ACEC62DE2EDBD /* PushNotificationService.swift */,
@@ -323,6 +329,7 @@
 				509A85CBBE09ADCD4B3A01E0 /* AddNoteView.swift in Sources */,
 				31E7D82B24AF5AA82BBC51F8 /* AuthView.swift in Sources */,
 				42EFE9E0750816CF57E0DB1E /* Book.swift in Sources */,
+				1F9E7877EB46137357F609CA /* BlockedUsersView.swift in Sources */,
 				A592ECA93DAAB8EEBC75B8C4 /* BookDetailView.swift in Sources */,
 				60C353BFFC805B5F0DC568C8 /* BookNote.swift in Sources */,
 				36CFC30D511B3881BB98AD1D /* BookRecommendationSheet.swift in Sources */,
@@ -350,6 +357,7 @@
 				1CD5698A8D4BA595CF34FCBF /* SettingsView.swift in Sources */,
 				D0D4442EA7B641433275248C /* SocialModels.swift in Sources */,
 				1CD3359E6CAF263C3FEDF50B /* SocialService.swift in Sources */,
+				5BD53265A74F0A8E7E1A53F5 /* ContentFilter.swift in Sources */,
 				ECB275CB2B7CA420D02539F2 /* SupabaseAuthService.swift in Sources */,
 				5339F4408583134672959BFA /* SupabaseConfig.swift in Sources */,
 				7E7D5C073CAB76AB3B2F94C8 /* UserProfileView.swift in Sources */,

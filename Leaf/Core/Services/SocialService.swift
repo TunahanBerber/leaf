@@ -29,6 +29,17 @@ private struct ProfileRecord: Codable {
     }
 }
 
+// blocked_users tablosundan gelen ham kayıt
+private struct BlockedUserRow: Codable {
+    var blockerId: String
+    var blockedId: String
+
+    enum CodingKeys: String, CodingKey {
+        case blockerId = "blocker_id"
+        case blockedId = "blocked_id"
+    }
+}
+
 @MainActor
 final class SocialService: ObservableObject {
 
@@ -39,6 +50,7 @@ final class SocialService: ObservableObject {
     @Published var conversations: [Conversation] = []
     @Published var pendingRequests: [ConversationRequest] = []  // gelen bekleyen istekler
     @Published var messages: [Message] = []
+    @Published var blockedUsers: [UserProfile] = []
     @Published var isLoading = false
     @Published var error: String?
     @Published var unreadCount: Int = 0
@@ -152,7 +164,13 @@ final class SocialService: ObservableObject {
                 .execute()
                 .value
 
-            discoveredUsers = users
+            // birbirini engellemiş kullanıcılar keşifte görünmesin
+            if let userId = try? await supabase.auth.session.user.id.uuidString.lowercased() {
+                let blocked = await blockedPairIds(currentId: userId)
+                discoveredUsers = users.filter { !blocked.contains($0.id) }
+            } else {
+                discoveredUsers = users
+            }
         } catch {
             self.error = "Kullanıcılar yüklenemedi."
             print("[SocialService] discoverUsers error: \(error)")
@@ -312,6 +330,13 @@ final class SocialService: ObservableObject {
                 .order("created_at", ascending: false)
                 .execute()
                 .value
+
+            // birbirini engellemiş kullanıcıların sohbeti listede görünmesin
+            let blocked = await blockedPairIds(currentId: userId)
+            convs.removeAll { conv in
+                let otherId = conv.userAId == userId ? conv.userBId : conv.userAId
+                return blocked.contains(otherId)
+            }
 
             // diğer kullanıcıların ID'lerini topla
             let otherIds = convs.map { conv -> String in
@@ -683,24 +708,22 @@ final class SocialService: ObservableObject {
     }
 
     // MARK: - Engelleme & Şikayet
+    //
+    // blocked_users ve user_reports tabloları Supabase'de gerçekten var (RLS ile birlikte).
+    // messages/conversations/conversation_requests RLS policy'leri de blok kontrolü yapıyor,
+    // yani engelleme sadece UI'da değil DB seviyesinde de uygulanıyor.
 
-    // Supabase'de iki tablo gerekli:
-    //
-    // create table public.blocked_users (
-    //   id uuid primary key default gen_random_uuid(),
-    //   blocker_id text not null references public.profiles(id) on delete cascade,
-    //   blocked_id text not null references public.profiles(id) on delete cascade,
-    //   created_at timestamptz default now(),
-    //   unique(blocker_id, blocked_id)
-    // );
-    //
-    // create table public.user_reports (
-    //   id uuid primary key default gen_random_uuid(),
-    //   reporter_id text not null references public.profiles(id) on delete cascade,
-    //   reported_id text not null references public.profiles(id) on delete cascade,
-    //   reason text not null,
-    //   created_at timestamptz default now()
-    // );
+    // iki yönde de (ben onu ya da o beni engellemiş) blocklu kullanıcı id'lerini döner
+    private func blockedPairIds(currentId: String) async -> Set<String> {
+        let rows: [BlockedUserRow] = (try? await supabase
+            .from("blocked_users")
+            .select()
+            .or("blocker_id.eq.\(currentId),blocked_id.eq.\(currentId)")
+            .execute()
+            .value) ?? []
+
+        return Set(rows.map { $0.blockerId == currentId ? $0.blockedId : $0.blockerId })
+    }
 
     func blockUser(userId: String) async -> Bool {
         guard let currentId = try? await supabase.auth.session.user.id.uuidString.lowercased() else { return false }
@@ -715,6 +738,9 @@ final class SocialService: ObservableObject {
                 .from("blocked_users")
                 .insert(entry)
                 .execute()
+
+            // engellenen kullanıcıyla olan sohbet artık listede görünmesin
+            conversations.removeAll { $0.userAId == userId || $0.userBId == userId }
             return true
         } catch {
             self.error = "Kullanıcı engellenemedi."
@@ -722,14 +748,69 @@ final class SocialService: ObservableObject {
         }
     }
 
-    func reportUser(userId: String, reason: String) async -> Bool {
+    // ayarlar ekranındaki "Engellenen Kullanıcılar" listesi için
+    func fetchBlockedUsers() async {
+        guard let currentId = try? await supabase.auth.session.user.id.uuidString.lowercased() else { return }
+
+        do {
+            let rows: [BlockedUserRow] = try await supabase
+                .from("blocked_users")
+                .select()
+                .eq("blocker_id", value: currentId)
+                .execute()
+                .value
+
+            let ids = rows.map(\.blockedId)
+            guard !ids.isEmpty else {
+                blockedUsers = []
+                return
+            }
+
+            let profiles: [ProfileRecord] = try await supabase
+                .from("profiles")
+                .select()
+                .in("id", values: ids)
+                .execute()
+                .value
+
+            blockedUsers = profiles.map { $0.toUserProfile() }
+        } catch {
+            self.error = "Engellenen kullanıcılar yüklenemedi."
+        }
+    }
+
+    func unblockUser(userId: String) async -> Bool {
         guard let currentId = try? await supabase.auth.session.user.id.uuidString.lowercased() else { return false }
 
-        let entry: [String: AnyJSON] = [
+        do {
+            try await supabase
+                .from("blocked_users")
+                .delete()
+                .eq("blocker_id", value: currentId)
+                .eq("blocked_id", value: userId)
+                .execute()
+
+            blockedUsers.removeAll { $0.id == userId }
+            return true
+        } catch {
+            self.error = "Engel kaldırılamadı."
+            return false
+        }
+    }
+
+    // messageId verilirse belirli bir mesaj, verilmezse kullanıcının kendisi şikayet edilir
+    func reportUser(userId: String, reason: String, messageId: String? = nil, description: String? = nil) async -> Bool {
+        guard let currentId = try? await supabase.auth.session.user.id.uuidString.lowercased() else { return false }
+
+        var entry: [String: AnyJSON] = [
             "reporter_id": .string(currentId),
             "reported_id": .string(userId),
             "reason":      .string(reason)
         ]
+        if let messageId { entry["message_id"] = .string(messageId) }
+        if let description, !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            entry["description"] = .string(description)
+        }
 
         do {
             try await supabase

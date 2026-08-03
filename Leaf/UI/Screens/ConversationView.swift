@@ -15,6 +15,8 @@ struct ConversationView: View {
     @State private var showBlockConfirm  = false
     @State private var showReportSheet   = false
     @State private var showReportSuccess = false
+    @State private var messageToReport: Message?   // context menüden mesaj bazlı şikayet
+    @State private var filterWarning: String?
 
     private var currentUserId: String {
         auth.currentUser?.id.uuidString.lowercased() ?? ""
@@ -67,10 +69,23 @@ struct ConversationView: View {
             Button("İptal", role: .cancel) { }
         }
         .sheet(isPresented: $showReportSheet) {
-            ReportSheet(username: otherUsername) { reason in
+            ReportSheet(username: otherUsername) { reason, description in
                 guard let uid = otherUserId else { return }
                 Task {
-                    let ok = await socialService.reportUser(userId: uid, reason: reason)
+                    let ok = await socialService.reportUser(userId: uid, reason: reason, description: description)
+                    if ok { showReportSuccess = true }
+                }
+            }
+        }
+        .sheet(item: $messageToReport) { message in
+            ReportSheet(username: otherUsername) { reason, description in
+                Task {
+                    let ok = await socialService.reportUser(
+                        userId: message.senderId,
+                        reason: reason,
+                        messageId: message.id,
+                        description: description
+                    )
                     if ok { showReportSuccess = true }
                 }
             }
@@ -79,6 +94,11 @@ struct ConversationView: View {
             Button("Tamam", role: .cancel) { }
         } message: {
             Text("Bildirimin alındı. En kısa sürede incelenecek.")
+        }
+        .alert("Mesaj Gönderilemedi", isPresented: Binding(get: { filterWarning != nil }, set: { if !$0 { filterWarning = nil } })) {
+            Button("Tamam", role: .cancel) { }
+        } message: {
+            Text(filterWarning ?? "")
         }
         .task {
             await socialService.fetchMessages(conversationId: conversationId)
@@ -101,9 +121,12 @@ struct ConversationView: View {
                 LazyVStack(spacing: 4) {
                     ForEach(socialService.messages) { message in
                         let isOwn = message.senderId == currentUserId
-                        MessageBubble(message: message, isOwn: isOwn) {
-                            Task { await socialService.deleteMessage(message) }
-                        }
+                        MessageBubble(
+                            message: message,
+                            isOwn: isOwn,
+                            onDelete: { Task { await socialService.deleteMessage(message) } },
+                            onReport: isOwn ? nil : { messageToReport = message }
+                        )
                         .id(message.id)
                     }
                 }
@@ -182,6 +205,12 @@ struct ConversationView: View {
     private func sendMessage() {
         let text = messageText.trimmingCharacters(in: .whitespaces)
         guard !text.isEmpty else { return }
+
+        guard ContentFilter.isAllowed(text) else {
+            filterWarning = "Mesajın uygunsuz içerik barındırdığı için gönderilemedi."
+            return
+        }
+
         messageText = ""
         Task {
             await socialService.sendMessage(conversationId: conversationId, content: text)
@@ -193,17 +222,18 @@ struct ConversationView: View {
 
 struct ReportSheet: View {
     let username: String
-    let onSubmit: (String) -> Void
+    let onSubmit: (_ reason: String, _ description: String) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @State private var selectedReason: String?
+    @State private var description = ""
+    @FocusState private var isDescriptionFocused: Bool
 
     private let reasons = [
-        "Uygunsuz içerik",
-        "Taciz veya zorbalık",
-        "Spam veya reklam",
-        "Sahte hesap",
+        "Taciz",
+        "Spam",
+        "Uygunsuz İçerik",
         "Diğer"
     ]
 
@@ -212,24 +242,41 @@ struct ReportSheet: View {
             ZStack {
                 LeafGradientBackground()
 
-                List(reasons, id: \.self) { reason in
-                    Button {
-                        selectedReason = reason
-                    } label: {
-                        HStack {
-                            Text(reason)
-                                .foregroundStyle(LeafColors.textPrimary(for: colorScheme))
-                            Spacer()
-                            if selectedReason == reason {
-                                Image(systemName: "checkmark")
-                                    .foregroundStyle(LeafColors.accent(for: colorScheme))
+                List {
+                    Section {
+                        ForEach(reasons, id: \.self) { reason in
+                            Button {
+                                selectedReason = reason
+                            } label: {
+                                HStack {
+                                    Text(reason)
+                                        .foregroundStyle(LeafColors.textPrimary(for: colorScheme))
+                                    Spacer()
+                                    if selectedReason == reason {
+                                        Image(systemName: "checkmark")
+                                            .foregroundStyle(LeafColors.accent(for: colorScheme))
+                                    }
+                                }
                             }
+                            .listRowBackground(LeafColors.surfacePrimary(for: colorScheme))
                         }
+                    } header: {
+                        Text("Sebep")
                     }
-                    .listRowBackground(LeafColors.surfacePrimary(for: colorScheme))
+
+                    Section {
+                        TextField("İsteğe bağlı, kısaca açıkla...", text: $description, axis: .vertical)
+                            .lineLimit(3...6)
+                            .focused($isDescriptionFocused)
+                            .foregroundStyle(LeafColors.textPrimary(for: colorScheme))
+                            .listRowBackground(LeafColors.surfacePrimary(for: colorScheme))
+                    } header: {
+                        Text("Açıklama")
+                    }
                 }
                 .listStyle(.insetGrouped)
                 .scrollContentBackground(.hidden)
+                .scrollDismissesKeyboard(.immediately)
             }
             .navigationTitle("\(username) Şikayet Et")
             .navigationBarTitleDisplayMode(.inline)
@@ -240,7 +287,7 @@ struct ReportSheet: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Gönder") {
                         guard let reason = selectedReason else { return }
-                        onSubmit(reason)
+                        onSubmit(reason, description.trimmingCharacters(in: .whitespacesAndNewlines))
                         dismiss()
                     }
                     .disabled(selectedReason == nil)
@@ -257,6 +304,7 @@ struct MessageBubble: View {
     let message: Message
     let isOwn: Bool
     let onDelete: () -> Void
+    let onReport: (() -> Void)?
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
@@ -287,6 +335,12 @@ struct MessageBubble: View {
                                 onDelete()
                             } label: {
                                 Label("Mesajı Sil", systemImage: "trash")
+                            }
+                        } else if let onReport {
+                            Button {
+                                onReport()
+                            } label: {
+                                Label("Şikayet Et", systemImage: "flag")
                             }
                         }
                     }
