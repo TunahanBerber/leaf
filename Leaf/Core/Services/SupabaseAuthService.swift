@@ -116,7 +116,8 @@ final class SupabaseAuthService: ObservableObject {
         defer { isLoading = false }
 
         do {
-            try await supabase.auth.resetPasswordForEmail(email)
+            let redirectURL = URL(string: "com.tunahan.leaf://login-callback")!
+            try await supabase.auth.resetPasswordForEmail(email, redirectTo: redirectURL)
         } catch {
             errorMessage = mapAuthError(error)
         }

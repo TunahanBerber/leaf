@@ -190,6 +190,7 @@ final class SocialService: ObservableObject {
                 .execute()
             return true
         } catch {
+            print("[SocialService] sendConversationRequest error: \(error)")
             self.error = "İstek gönderilemedi."
             return false
         }
