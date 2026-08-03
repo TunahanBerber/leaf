@@ -41,8 +41,8 @@ DerivedData/
 # Secrets — gerçek değerleri içerir, asla commit edilmez
 Config/Secrets.xcconfig
 
-# Admin paneli — service_role ile RLS'i bypass ediyor, repoda gezinmesin
-admin/
+# admin-app — publishable key .env.example'da, gerçek .env yine de commit edilmesin
+admin-app/.env
 
 #personally
 leaf.md
