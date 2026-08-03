@@ -63,29 +63,6 @@ struct SettingsView: View {
             } message: {
                 Text("Profil bilgilerin güncellendi.")
             }
-            .confirmationDialog("Çıkış yapmak istediğine emin misin?", isPresented: $showSignOutConfirm, titleVisibility: .visible) {
-                Button("Çıkış Yap", role: .destructive) {
-                    Task { await auth.signOut() }
-                }
-                Button("İptal", role: .cancel) { }
-            }
-            .confirmationDialog(
-                "Hesabını kalıcı olarak silmek istediğine emin misin?",
-                isPresented: $showDeleteConfirm,
-                titleVisibility: .visible
-            ) {
-                Button("Hesabı Sil", role: .destructive) {
-                    isDeleting = true
-                    Task {
-                        let ok = await auth.deleteAccount()
-                        isDeleting = false
-                        if !ok { showDeleteError = true }
-                    }
-                }
-                Button("İptal", role: .cancel) { }
-            } message: {
-                Text("Tüm verilerin, mesajların ve profilin kalıcı olarak silinecek. Bu işlem geri alınamaz.")
-            }
             .alert("Hesap Silinemedi", isPresented: $showDeleteError) {
                 Button("Tamam", role: .cancel) { }
             } message: {
@@ -234,6 +211,12 @@ struct SettingsView: View {
                     .foregroundStyle(.red)
             }
             .listRowBackground(LeafColors.surfacePrimary(for: colorScheme))
+            .confirmationDialog("Çıkış yapmak istediğine emin misin?", isPresented: $showSignOutConfirm, titleVisibility: .visible) {
+                Button("Çıkış Yap", role: .destructive) {
+                    Task { await auth.signOut() }
+                }
+                Button("İptal", role: .cancel) { }
+            }
 
             Button(role: .destructive) {
                 showDeleteConfirm = true
@@ -250,6 +233,23 @@ struct SettingsView: View {
             }
             .disabled(isDeleting)
             .listRowBackground(LeafColors.surfacePrimary(for: colorScheme))
+            .confirmationDialog(
+                "Hesabını kalıcı olarak silmek istediğine emin misin?",
+                isPresented: $showDeleteConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Hesabı Sil", role: .destructive) {
+                    isDeleting = true
+                    Task {
+                        let ok = await auth.deleteAccount()
+                        isDeleting = false
+                        if !ok { showDeleteError = true }
+                    }
+                }
+                Button("İptal", role: .cancel) { }
+            } message: {
+                Text("Tüm verilerin, mesajların ve profilin kalıcı olarak silinecek. Bu işlem geri alınamaz.")
+            }
         } header: {
             Text("Hesap")
         } footer: {
