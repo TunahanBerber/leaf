@@ -50,7 +50,10 @@ onMounted(() => {
 <template>
   <div>
     <div class="header">
-      <h1>Şikayetler</h1>
+      <div>
+        <h1>Şikayetler</h1>
+        <p class="subtitle">Kullanıcı şikayetlerini inceleyin ve aksiyon alın</p>
+      </div>
       <button class="btn-ghost" @click="store.fetchReports(true)">Yenile</button>
     </div>
 
@@ -104,13 +107,19 @@ onMounted(() => {
 .header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 20px;
 }
 
 h1 {
-  font-size: 20px;
+  font-size: 22px;
   margin: 0;
+}
+
+.subtitle {
+  color: var(--text-2);
+  font-size: 13px;
+  margin: 4px 0 0;
 }
 
 .stats {

@@ -23,7 +23,9 @@ async function handleSignOut(): Promise<void> {
       <button class="btn-ghost" @click="handleSignOut">Çıkış Yap</button>
     </nav>
     <main class="content">
-      <RouterView />
+      <div class="content-inner">
+        <RouterView />
+      </div>
     </main>
   </div>
 </template>
@@ -85,7 +87,13 @@ async function handleSignOut(): Promise<void> {
 
 .content {
   flex: 1;
+  display: flex;
+  justify-content: center;
   padding: 32px;
+}
+
+.content-inner {
+  width: 100%;
   max-width: 960px;
 }
 </style>
