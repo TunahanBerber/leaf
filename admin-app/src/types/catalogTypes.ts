@@ -1,3 +1,5 @@
+export type CatalogStatus = 'pending' | 'approved';
+
 export interface CatalogBook {
   id: string;
   title: string;
@@ -8,6 +10,7 @@ export interface CatalogBook {
   publisher: string | null;
   published_year: string | null;
   added_count: number;
+  status: CatalogStatus;
   created_at: string;
 }
 

@@ -11,10 +11,12 @@ private struct ProfileRecord: Codable {
     var avatarUrl: String?
     var bio: String?
     var age: Int?
+    var socialEnabled: Bool?
 
     enum CodingKeys: String, CodingKey {
         case id, username, bio, age
         case avatarUrl = "avatar_url"
+        case socialEnabled = "social_enabled"
     }
 
     func toUserProfile() -> UserProfile {
@@ -24,7 +26,8 @@ private struct ProfileRecord: Codable {
             avatarUrl: avatarUrl,
             bio: bio,
             age: age,
-            commonBookTitles: nil
+            commonBookTitles: nil,
+            socialEnabled: socialEnabled
         )
     }
 }
@@ -147,6 +150,30 @@ final class SocialService: ObservableObject {
             return true
         } catch {
             self.error = "Profil güncellenemedi."
+            return false
+        }
+    }
+
+    // Keşfet/Mesajlar sekmelerini gösterme tercihi — hesaba yazılıyor ki
+    // aynı hesap başka bir cihazda açıldığında da aynı durumda görünsün
+    @discardableResult
+    func updateSocialEnabled(_ enabled: Bool) async -> Bool {
+        guard let userId = try? await supabase.auth.session.user.id.uuidString.lowercased() else { return false }
+
+        // optimistic update — UI hemen tepki versin
+        currentProfile?.socialEnabled = enabled
+
+        do {
+            try await supabase
+                .from("profiles")
+                .update(["social_enabled": AnyJSON.bool(enabled)])
+                .eq("id", value: userId)
+                .execute()
+            return true
+        } catch {
+            // geri al
+            currentProfile?.socialEnabled = !enabled
+            self.error = "Ayar kaydedilemedi."
             return false
         }
     }

@@ -3,7 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useCatalogStore } from '@/stores/catalogStore';
 import { useToast } from '@/composables/useToast';
 import CatalogEditModal from '@/components/CatalogEditModal.vue';
-import type { CatalogBook, CatalogBookUpdate } from '@/types/catalogTypes';
+import type { CatalogBook, CatalogBookUpdate, CatalogStatus } from '@/types/catalogTypes';
 
 const PAGE_SIZE = 10;
 
@@ -12,6 +12,7 @@ const toast = useToast();
 
 const search = ref('');
 const page = ref(1);
+const statusFilter = ref<CatalogStatus | 'all'>('pending');
 const editingBook = ref<CatalogBook | null>(null);
 let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -23,12 +24,25 @@ watch(search, (value) => {
   }, 250);
 });
 
-const totalPages = computed(() => Math.max(1, Math.ceil(store.books.length / PAGE_SIZE)));
+const counts = computed(() => {
+  const c = { pending: 0, approved: 0 };
+  for (const b of store.books) c[b.status]++;
+  return c;
+});
+
+const filtered = computed(() => {
+  if (statusFilter.value === 'all') return store.books;
+  return store.books.filter((b) => b.status === statusFilter.value);
+});
+
+const totalPages = computed(() => Math.max(1, Math.ceil(filtered.value.length / PAGE_SIZE)));
 
 const pageItems = computed(() => {
   const start = (page.value - 1) * PAGE_SIZE;
-  return store.books.slice(start, start + PAGE_SIZE);
+  return filtered.value.slice(start, start + PAGE_SIZE);
 });
+
+watch(statusFilter, () => { page.value = 1; });
 
 const pageNumbers = computed(() => {
   const total = totalPages.value;
@@ -56,6 +70,24 @@ async function handleSaveEdit(updates: CatalogBookUpdate): Promise<void> {
     editingBook.value = null;
   } else {
     toast.error('Güncellenemedi');
+  }
+}
+
+async function handleApprove(book: CatalogBook): Promise<void> {
+  const ok = await store.setStatus(book.id, 'approved');
+  if (ok) {
+    toast.success('Onaylandı, artık arama sonuçlarında görünecek');
+  } else {
+    toast.error('Onaylanamadı');
+  }
+}
+
+async function handleUnapprove(book: CatalogBook): Promise<void> {
+  const ok = await store.setStatus(book.id, 'pending');
+  if (ok) {
+    toast.success('Onay kaldırıldı');
+  } else {
+    toast.error('İşlem başarısız');
   }
 }
 
@@ -94,10 +126,22 @@ onMounted(() => {
 
     <input v-model="search" placeholder="Başlık veya yazar ara..." class="search" />
 
+    <div class="tabs">
+      <button class="btn-ghost" :class="{ active: statusFilter === 'pending' }" @click="statusFilter = 'pending'">
+        Bekleyen ({{ counts.pending }})
+      </button>
+      <button class="btn-ghost" :class="{ active: statusFilter === 'approved' }" @click="statusFilter = 'approved'">
+        Onaylı ({{ counts.approved }})
+      </button>
+      <button class="btn-ghost" :class="{ active: statusFilter === 'all' }" @click="statusFilter = 'all'">
+        Tümü ({{ store.books.length }})
+      </button>
+    </div>
+
     <p v-if="store.error" class="error">{{ store.error }}</p>
 
     <div v-if="store.loading" class="empty">Yükleniyor...</div>
-    <div v-else-if="!store.books.length" class="empty">Sonuç bulunamadı.</div>
+    <div v-else-if="!filtered.length" class="empty">Bu filtrede kitap yok.</div>
 
     <div v-else class="table-wrap card">
       <table>
@@ -105,6 +149,7 @@ onMounted(() => {
           <tr>
             <th>Kitap</th>
             <th>Detaylar</th>
+            <th>Durum</th>
             <th>Eklenme</th>
             <th>İşlemler</th>
           </tr>
@@ -123,10 +168,24 @@ onMounted(() => {
             </td>
             <td class="muted">{{ metaLine(book) || '—' }}</td>
             <td>
+              <span class="pill" :class="book.status === 'approved' ? 'pill-accent' : 'pill-warn'">
+                {{ book.status === 'approved' ? 'Onaylı' : 'Bekliyor' }}
+              </span>
+            </td>
+            <td>
               <span class="pill pill-accent">{{ book.added_count }}×</span>
             </td>
             <td>
               <div class="row-actions">
+                <button
+                  v-if="book.status === 'pending'"
+                  class="icon-btn icon-btn-accent"
+                  title="Onayla"
+                  @click="handleApprove(book)"
+                >
+                  ✓
+                </button>
+                <button v-else class="icon-btn" title="Onayı kaldır" @click="handleUnapprove(book)">↺</button>
                 <button class="icon-btn" title="Düzenle" @click="editingBook = book">✎</button>
                 <button class="icon-btn icon-btn-danger" title="Sil" @click="handleDelete(book)">🗑</button>
               </div>
@@ -176,6 +235,18 @@ h1 {
 .search {
   width: 100%;
   margin-bottom: 16px;
+}
+
+.tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.tabs .active {
+  background: var(--accent);
+  color: white;
+  border-color: transparent;
 }
 
 .error {
@@ -269,6 +340,11 @@ tbody tr:hover {
   color: var(--accent);
 }
 
+.pill-warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
 .row-actions {
   display: flex;
   gap: 6px;
@@ -290,6 +366,10 @@ tbody tr:hover {
 
 .icon-btn-danger {
   color: var(--danger);
+}
+
+.icon-btn-accent {
+  color: var(--accent);
 }
 
 .pagination {

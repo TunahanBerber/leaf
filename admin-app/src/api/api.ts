@@ -1,7 +1,7 @@
 import { supabase } from '@/api/supabase';
 import type { Report, ReportStatus } from '@/types/reportTypes';
 import type { Profile } from '@/types/userTypes';
-import type { CatalogBook, CatalogBookUpdate } from '@/types/catalogTypes';
+import type { CatalogBook, CatalogBookUpdate, CatalogStatus } from '@/types/catalogTypes';
 
 export const authApi = {
   signIn: async (email: string, password: string) => {
@@ -79,6 +79,9 @@ export const catalogApi = {
   },
   update: async (id: string, updates: CatalogBookUpdate) => {
     return supabase.from('book_catalog').update(updates).eq('id', id).select().single<CatalogBook>();
+  },
+  setStatus: async (id: string, status: CatalogStatus) => {
+    return supabase.from('book_catalog').update({ status }).eq('id', id).select().single<CatalogBook>();
   },
   remove: async (id: string) => {
     return supabase.from('book_catalog').delete().eq('id', id);

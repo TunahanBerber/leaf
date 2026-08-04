@@ -1,7 +1,7 @@
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
 import { catalogApi } from '@/api/api';
-import type { CatalogBook, CatalogBookUpdate } from '@/types/catalogTypes';
+import type { CatalogBook, CatalogBookUpdate, CatalogStatus } from '@/types/catalogTypes';
 
 export const useCatalogStore = defineStore('catalog', () => {
   const books = ref<CatalogBook[]>([]);
@@ -39,6 +39,20 @@ export const useCatalogStore = defineStore('catalog', () => {
     }
   }
 
+  async function setStatus(id: string, status: CatalogStatus): Promise<boolean> {
+    try {
+      const { data, error: statusError } = await catalogApi.setStatus(id, status);
+      if (statusError) throw statusError;
+      const book = books.value.find((b) => b.id === id);
+      if (book && data) Object.assign(book, data);
+      return true;
+    } catch (e: unknown) {
+      console.error('setStatus hatası:', e);
+      error.value = 'Durum güncellenemedi.';
+      return false;
+    }
+  }
+
   async function removeBook(id: string): Promise<boolean> {
     try {
       const { error: removeError } = await catalogApi.remove(id);
@@ -52,5 +66,5 @@ export const useCatalogStore = defineStore('catalog', () => {
     }
   }
 
-  return { books, loading, error, hasLoaded, search, updateBook, removeBook };
+  return { books, loading, error, hasLoaded, search, updateBook, setStatus, removeBook };
 });

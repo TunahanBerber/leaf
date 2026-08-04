@@ -9,6 +9,10 @@ struct UserProfile: Identifiable, Hashable, Codable {
     var bio: String?
     var age: Int?
     var commonBookTitles: [String]?
+    // Keşfet/Mesajlar sekmelerini gösterip göstermeme tercihi — hesaba bağlı,
+    // cihazlar arası senkron olsun diye burada tutuyoruz (eskiden lokal UserDefaults'taydı).
+    // discover_users RPC'si bu kolonu döndürmüyor, o yüzden optional.
+    var socialEnabled: Bool?
 
     enum CodingKeys: String, CodingKey {
         case id = "profile_id"
@@ -16,6 +20,7 @@ struct UserProfile: Identifiable, Hashable, Codable {
         case avatarUrl       = "avatar_url"
         case bio, age
         case commonBookTitles = "common_book_titles"
+        case socialEnabled    = "social_enabled"
     }
 }
 

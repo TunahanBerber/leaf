@@ -6,7 +6,6 @@ const APNS_KEY_ID = Deno.env.get("APNS_KEY_ID")!;
 const APNS_TEAM_ID = Deno.env.get("APNS_TEAM_ID")!;
 const APNS_PRIVATE_KEY = Deno.env.get("APNS_PRIVATE_KEY")!; // .p8 dosyasının içeriği
 const APNS_BUNDLE_ID = Deno.env.get("APNS_BUNDLE_ID")!;     // com.tunahan.leaf
-const APNS_PRODUCTION = Deno.env.get("APNS_PRODUCTION") === "true";
 
 // APNs JWT oluştur (ES256)
 async function buildApnsJwt(): Promise<string> {
@@ -54,12 +53,17 @@ async function buildApnsJwt(): Promise<string> {
 
 async function sendApns(
   deviceToken: string,
+  environment: string,
   aps: object,
   extra: Record<string, string>
-) {
-  const host = APNS_PRODUCTION
-    ? "api.push.apple.com"
-    : "api.sandbox.push.apple.com";
+): Promise<{ host: string; status: number; response: string }> {
+  // token hangi build'den geldiyse (Debug→sandbox, Release/TestFlight→production)
+  // host da ona göre seçiliyor — tek bir global ortam varsaymak, karışık
+  // dev/TestFlight test senaryolarında bildirimlerin sessizce başarısız
+  // olmasına sebep oluyordu
+  const host = environment === "sandbox"
+    ? "api.sandbox.push.apple.com"
+    : "api.push.apple.com";
 
   const jwt = await buildApnsJwt();
 
@@ -76,10 +80,15 @@ async function sendApns(
     body,
   });
 
+  const text = await res.text();
   if (!res.ok) {
-    const err = await res.text();
-    console.error("[APNs] Hata:", res.status, err);
+    console.error("[APNs] Hata:", res.status, text);
+  } else {
+    console.log("[APNs] Basarili:", res.status);
   }
+  // sonucu response'a da yansıtıyoruz — pg_net'in net._http_response tablosundan
+  // APNs'in gerçek cevabını görebilmek için (debug: bildirim gitmiyor sorunları)
+  return { host, status: res.status, response: text };
 }
 
 Deno.serve(async (req) => {
@@ -89,10 +98,10 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Alıcının cihaz tokenini çek
+    // Alıcının cihaz tokenini ve hangi APNs ortamından geldiğini çek
     const { data: tokenRow } = await supabase
       .from("device_tokens")
-      .select("token")
+      .select("token, environment")
       .eq("user_id", recipient_id)
       .maybeSingle();
 
@@ -100,9 +109,11 @@ Deno.serve(async (req) => {
       return new Response("No device token", { status: 200 });
     }
 
+    let result;
     if (type === "request") {
-      await sendApns(
+      result = await sendApns(
         tokenRow.token,
+        tokenRow.environment,
         {
           alert: {
             title: "SocialLeaf",
@@ -115,8 +126,9 @@ Deno.serve(async (req) => {
       );
     } else {
       // type === "message"
-      await sendApns(
+      result = await sendApns(
         tokenRow.token,
+        tokenRow.environment,
         {
           alert: {
             title: sender_username,
@@ -129,7 +141,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    return new Response("OK", { status: 200 });
+    return new Response(
+      JSON.stringify({ ok: result.status < 300, environment: tokenRow.environment, ...result }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    );
   } catch (e) {
     console.error(e);
     return new Response("Error", { status: 500 });

@@ -168,15 +168,14 @@ struct AddBookView: View {
             updated.totalPages = Int(totalPages) ?? book.totalPages
             await store.updateBook(updated, newCoverData: compressed)
         } else {
-            // sadece OpenLibrary'den seçilenleri kataloğa gönderiyorum
-            // kullanıcının elle yazdığı veya fotoğraf yüklediği kitaplar kataloga yazılmıyor
+            // her yeni kitap (arama, elle giriş, foto fark etmez) kataloğa
+            // pending olarak gidiyor — admin onaylayana kadar görünmüyor
             await store.addBook(
                 title: title,
                 author: author,
                 coverImageData: compressed,
                 totalPages: Int(totalPages) ?? 0,
                 isWishlist: isWishlist,
-                fromCatalog: selectedOnlineBook != nil,
                 language: bookLanguage,
                 publisher: bookPublisher,
                 publishedYear: bookPublishedYear

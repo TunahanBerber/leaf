@@ -124,7 +124,13 @@ final class OpenLibraryService: ObservableObject {
     }
 
     func searchNow(query: String) async {
-        await performSearch(query: query)
+        // yazarken tetiklenmiş bekleyen debounce task'ı iptal edip yerine
+        // bunu koyuyorum — yoksa Enter'dan az sonra devreye girip
+        // results'ı sıfırlıyordu (ilk Enter'da "sonuç yok" görünmesinin sebebi buydu)
+        searchTask?.cancel()
+        let task = Task { await performSearch(query: query) }
+        searchTask = task
+        await task.value
     }
 
     func clear() {
@@ -208,6 +214,14 @@ final class OpenLibraryService: ObservableObject {
             .init(name: "maxResults", value: "20"),
             .init(name: "printType",  value: "books")
         ]
+
+        // key olmadan anonim/paylaşımlı kotaya düşüyor, çok kolay doluyor —
+        // kendi projemizin key'i varsa mutlaka ekliyoruz
+        if let apiKey = Bundle.main.object(forInfoDictionaryKey: "GOOGLE_BOOKS_API_KEY") as? String,
+           !apiKey.isEmpty, !apiKey.hasPrefix("$(") {
+            comps.queryItems?.append(.init(name: "key", value: apiKey))
+        }
+
         guard let url = comps.url else { return [] }
 
         let (data, resp) = try await Sessions.google.data(from: url)

@@ -8,8 +8,6 @@ struct SettingsView: View {
 
     // Tema
     @AppStorage("appTheme") private var appTheme: String = "system"
-    // Sosyal özellikler toggle
-    @AppStorage("socialFeaturesEnabled") private var socialFeaturesEnabled: Bool = true
 
     // Profil düzenleme
     @State private var username: String = ""
@@ -142,9 +140,18 @@ struct SettingsView: View {
 
     // MARK: - Sosyal Bölümü
 
+    private var socialFeaturesBinding: Binding<Bool> {
+        Binding(
+            get: { social.currentProfile?.socialEnabled ?? true },
+            set: { newValue in
+                Task { await social.updateSocialEnabled(newValue) }
+            }
+        )
+    }
+
     private var socialSection: some View {
         Section {
-            Toggle(isOn: $socialFeaturesEnabled) {
+            Toggle(isOn: socialFeaturesBinding) {
                 Label {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Sosyal Özellikler")

@@ -33,6 +33,20 @@ final class PushNotificationService: NSObject, ObservableObject {
         }
     }
 
+    // MARK: - APNs Ortamı
+    // Debug build → development (Sandbox APNs), Release build → production —
+    // aynı ayrım Leaf.entitlements'taki APS_ENVIRONMENT xcconfig değişkeniyle birebir
+    // eşleşiyor. send-push edge function'ı token'a doğru APNs host'unu seçmek için
+    // bu değeri kullanıyor; olmadan tüm token'lara tek bir global ortam varsayılıyordu
+    // ve dev build ↔ TestFlight arası bildirimler sessizce başarısız oluyordu.
+    private var apnsEnvironment: String {
+        #if DEBUG
+        return "sandbox"
+        #else
+        return "production"
+        #endif
+    }
+
     // MARK: - Token Kaydetme (AppDelegate'ten çağrılır)
 
     func registerToken(_ tokenData: Data) async {
@@ -49,7 +63,11 @@ final class PushNotificationService: NSObject, ObservableObject {
             try await supabase
                 .from("device_tokens")
                 .upsert(
-                    ["user_id": AnyJSON.string(userId), "token": AnyJSON.string(token)],
+                    [
+                        "user_id":     AnyJSON.string(userId),
+                        "token":       AnyJSON.string(token),
+                        "environment": AnyJSON.string(apnsEnvironment)
+                    ],
                     onConflict: "user_id"
                 )
                 .execute()

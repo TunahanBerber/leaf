@@ -70,9 +70,7 @@ struct MainTabView: View {
     @State private var selectedTab: MainTab = .library
     @Environment(\.scenePhase) private var scenePhase
 
-    @AppStorage("socialFeaturesEnabled") private var socialFeaturesEnabled: Bool = true
-
-    private var showSocial: Bool { social.isSocialAllowed && socialFeaturesEnabled }
+    private var showSocial: Bool { social.isSocialAllowed && (social.currentProfile?.socialEnabled ?? true) }
 
     var body: some View {
         TabView(selection: $selectedTab) {

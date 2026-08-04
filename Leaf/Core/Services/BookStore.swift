@@ -178,7 +178,6 @@ final class BookStore: ObservableObject {
         coverImageData: Data?,
         totalPages: Int,
         isWishlist: Bool,
-        fromCatalog: Bool = false,
         language: String? = nil,
         publisher: String? = nil,
         publishedYear: String? = nil
@@ -217,19 +216,19 @@ final class BookStore: ObservableObject {
 
             books.insert(saved.toBook(), at: 0)
 
-            // sadece OpenLibrary'den gelen kitaplar kataloğa gidiyor
-            // kullanıcının elle girdiği ya da fotoğraf eklediği kitaplar kataloga yazılmıyor
-            if fromCatalog {
-                await addToCatalog(
-                    title: title,
-                    author: author,
-                    pageCount: totalPages > 0 ? totalPages : nil,
-                    language: language,
-                    coverUrl: coverUrl,
-                    publisher: publisher,
-                    publishedYear: publishedYear
-                )
-            }
+            // her yeni kitap kataloğa gidiyor (elle girilen, foto ile eklenen,
+            // aramadan seçilen fark etmez) — admin onaylamadan görünmüyor.
+            // title+author unique olduğu için zaten katalogda olan bir kitap
+            // tekrar eklenmeye çalışılırsa sessizce reddediliyor, mevcut satır bozulmuyor
+            await addToCatalog(
+                title: title,
+                author: author,
+                pageCount: totalPages > 0 ? totalPages : nil,
+                language: language,
+                coverUrl: coverUrl,
+                publisher: publisher,
+                publishedYear: publishedYear
+            )
         } catch {
             self.error = "Kitap eklenemedi: \(error.localizedDescription)"
         }
@@ -259,7 +258,8 @@ final class BookStore: ObservableObject {
             "language":       language.map { .string($0) } ?? .null,
             "cover_url":      publicCoverUrl.map { .string($0) } ?? .null,
             "publisher":      publisher.map { .string($0) } ?? .null,
-            "published_year": publishedYear.map { .string($0) } ?? .null
+            "published_year": publishedYear.map { .string($0) } ?? .null,
+            "status":         .string("pending")
         ]
 
         // aynı kitap zaten katalogdaysa hata verme, sessizce geç

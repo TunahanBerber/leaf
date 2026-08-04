@@ -223,8 +223,7 @@ struct BookRecommendationSheet: View {
             author: book.author,
             coverImageData: coverData,
             totalPages: book.pageCount ?? 0,
-            isWishlist: true,
-            fromCatalog: false  // katalogda zaten var, tekrar yazma
+            isWishlist: true
         )
 
         // kullanıcı öneri üzerinden ekledi — popülerlik sayacını artırıyoruz
