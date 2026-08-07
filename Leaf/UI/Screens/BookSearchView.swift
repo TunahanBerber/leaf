@@ -101,6 +101,9 @@ struct BookSearchSheet: View {
             errorView(message: error)
         } else if query.isEmpty {
             emptyQueryView
+        } else if service.results.isEmpty && !query.isEmpty && !service.isSearchComplete {
+            // Google hâlâ arka planda geliyor olabilir — "sonuç yok" demeden önce onu bekleyelim
+            loadingView
         } else if service.results.isEmpty && !query.isEmpty {
             noResultsView
         } else {

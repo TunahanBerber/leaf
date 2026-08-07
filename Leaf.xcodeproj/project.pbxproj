@@ -35,6 +35,7 @@
 		9D40A3537C5631E0DCB78902 /* BookStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED6E106B22E444D42C6AFC0A /* BookStore.swift */; };
 		9E3131AF0263FC6BC60B73D0 /* CoverImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEB1D879C2F4C29FEB678566 /* CoverImageView.swift */; };
 		A592ECA93DAAB8EEBC75B8C4 /* BookDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D74E6ECDE26CCF8692B9F248 /* BookDetailView.swift */; };
+		AD1C1705B586C20D945B8280 /* SearchQualityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31ADFC20A32BB6BB08E51CC7 /* SearchQualityTests.swift */; };
 		BF9AD710D9D7207D01E83A92 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D131E2722C9707B0B0486726 /* Assets.xcassets */; };
 		BFDFEA252462C6C147479AF6 /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4152A273FD81613992DF338A /* EmptyStateView.swift */; };
 		D0D4442EA7B641433275248C /* SocialModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 298A8537AA032AD7646D9095 /* SocialModels.swift */; };
@@ -49,6 +50,16 @@
 		ECB275CB2B7CA420D02539F2 /* SupabaseAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62F3248C082FA82BE2D8BEAD /* SupabaseAuthService.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		D93F239949C766D176ED2D7D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 73A66D198EB406AF2DB43537 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 769C6C86EF978AF3BD344B5C;
+			remoteInfo = Leaf;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		01366E83E4B52AE4476676A7 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		079B66E45437B83540285843 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -58,6 +69,7 @@
 		24C9654D9C9858025687AEEA /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		298A8537AA032AD7646D9095 /* SocialModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialModels.swift; sourceTree = "<group>"; };
 		2D6D58237C7110E8FB133F24 /* PrivacyPolicyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyPolicyView.swift; sourceTree = "<group>"; };
+		31ADFC20A32BB6BB08E51CC7 /* SearchQualityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchQualityTests.swift; sourceTree = "<group>"; };
 		40AF0594D1EDCDA0EFCD2BF4 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
 		4152A273FD81613992DF338A /* EmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyStateView.swift; sourceTree = "<group>"; };
 		5567509C1F65119BFD2FF613 /* ContentFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentFilter.swift; sourceTree = "<group>"; };
@@ -65,6 +77,7 @@
 		6463668D9561434CA22C32DB /* BlockedUsersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockedUsersView.swift; sourceTree = "<group>"; };
 		666AA8349D78A37CC88DE286 /* SupabaseConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseConfig.swift; sourceTree = "<group>"; };
 		67BC30D06622F9291DA78759 /* Leaf.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Leaf.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		68DAB62F4F69F4FB32F5F799 /* LeafTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LeafTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		71BC6F4FD03DEE1C48A40D84 /* BookNote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookNote.swift; sourceTree = "<group>"; };
 		761251687E9AC2FE22D666C0 /* InboxView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboxView.swift; sourceTree = "<group>"; };
 		7A08637AB0704D1D8DB7F943 /* GlassCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassCard.swift; sourceTree = "<group>"; };
@@ -168,6 +181,7 @@
 			isa = PBXGroup;
 			children = (
 				67BC30D06622F9291DA78759 /* Leaf.app */,
+				68DAB62F4F69F4FB32F5F799 /* LeafTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -181,6 +195,14 @@
 				B94D5CE82BAA5FC04FADE7B1 /* LeafGradientBackground.swift */,
 			);
 			path = Components;
+			sourceTree = "<group>";
+		};
+		3B7C57A37419930994250571 /* LeafTests */ = {
+			isa = PBXGroup;
+			children = (
+				31ADFC20A32BB6BB08E51CC7 /* SearchQualityTests.swift */,
+			);
+			path = LeafTests;
 			sourceTree = "<group>";
 		};
 		AF0875D6721C1816C1DE2202 /* Resources */ = {
@@ -231,6 +253,7 @@
 			children = (
 				DFEA8A5301E2104672B64EE4 /* Config */,
 				210A2004C8B331BC2DE64002 /* Leaf */,
+				3B7C57A37419930994250571 /* LeafTests */,
 				29297EC67F0B2D66153E1A13 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -256,6 +279,24 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		0F4308D30DAD728E419EAAAA /* LeafTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A5234E501934F46128C1204D /* Build configuration list for PBXNativeTarget "LeafTests" */;
+			buildPhases = (
+				6BA7A707906A26B0F26260E5 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				977DA0739AA465540E8F456E /* PBXTargetDependency */,
+			);
+			name = LeafTests;
+			packageProductDependencies = (
+			);
+			productName = LeafTests;
+			productReference = 68DAB62F4F69F4FB32F5F799 /* LeafTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		769C6C86EF978AF3BD344B5C /* Leaf */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 2CDB440F20A532DFD5C0BD53 /* Build configuration list for PBXNativeTarget "Leaf" */;
@@ -286,6 +327,9 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					0F4308D30DAD728E419EAAAA = {
+						DevelopmentTeam = V76H5YC47J;
+					};
 					769C6C86EF978AF3BD344B5C = {
 						DevelopmentTeam = V76H5YC47J;
 					};
@@ -310,6 +354,7 @@
 			projectRoot = "";
 			targets = (
 				769C6C86EF978AF3BD344B5C /* Leaf */,
+				0F4308D30DAD728E419EAAAA /* LeafTests */,
 			);
 		};
 /* End PBXProject section */
@@ -370,9 +415,43 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		6BA7A707906A26B0F26260E5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AD1C1705B586C20D945B8280 /* SearchQualityTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		977DA0739AA465540E8F456E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 769C6C86EF978AF3BD344B5C /* Leaf */;
+			targetProxy = D93F239949C766D176ED2D7D /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		2181481EB53ADCDE145ADEAB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				DEVELOPMENT_TEAM = V76H5YC47J;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.tunahan.leaf.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Leaf.app/Leaf";
+			};
+			name = Release;
+		};
 		54D6BDAE11E519BEF34ED068 /* Release */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 01366E83E4B52AE4476676A7 /* Release.xcconfig */;
@@ -395,6 +474,24 @@
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
+		};
+		9B41EE8E9FEA147E3926D253 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				DEVELOPMENT_TEAM = V76H5YC47J;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.tunahan.leaf.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Leaf.app/Leaf";
+			};
+			name = Debug;
 		};
 		A11A7FC07E43E2AD01EE2A53 /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -555,6 +652,15 @@
 			buildConfigurations = (
 				ABCC06B8E8FF7B8F984C584E /* Debug */,
 				54D6BDAE11E519BEF34ED068 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		A5234E501934F46128C1204D /* Build configuration list for PBXNativeTarget "LeafTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9B41EE8E9FEA147E3926D253 /* Debug */,
+				2181481EB53ADCDE145ADEAB /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

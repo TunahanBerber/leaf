@@ -16,6 +16,8 @@ struct AddBookView: View {
     @State private var photo: PhotosPickerItem?
     @State private var coverData: Data?
     @State private var isSaving = false
+    @State private var isFetchingCover = false
+    @State private var coverFetchTask: Task<Void, Never>?
 
     var bookToEdit: Book? = nil
     var isWishlist: Bool = false
@@ -98,6 +100,7 @@ struct AddBookView: View {
         // scheme'i closure'a girmeden önce yakalıyorum — Swift 6 Sendable kuralı zorunlu kılıyor
         let s = scheme
         let cover = coverData
+        let fetching = isFetchingCover
         return PhotosPicker(selection: $photo, matching: .images) {
             if let data = cover, let img = UIImage(data: data) {
                 Image(uiImage: img)
@@ -107,12 +110,20 @@ struct AddBookView: View {
                     .clipShape(RoundedRectangle(cornerRadius: LeafRadius.medium, style: .continuous))
             } else {
                 VStack(spacing: LeafSpacing.sm) {
-                    Image(systemName: "photo.badge.plus")
-                        .font(.system(size: 28, weight: .light))
-                        .foregroundStyle(LeafColors.accent(for: s).opacity(0.6))
-                    Text("Kapak Ekle")
-                        .font(.system(size: 13))
-                        .foregroundStyle(LeafColors.textTertiary(for: s))
+                    if fetching {
+                        ProgressView()
+                            .tint(LeafColors.accent(for: s).opacity(0.6))
+                        Text("Kapak iniyor...")
+                            .font(.system(size: 13))
+                            .foregroundStyle(LeafColors.textTertiary(for: s))
+                    } else {
+                        Image(systemName: "photo.badge.plus")
+                            .font(.system(size: 28, weight: .light))
+                            .foregroundStyle(LeafColors.accent(for: s).opacity(0.6))
+                        Text("Kapak Ekle")
+                            .font(.system(size: 13))
+                            .foregroundStyle(LeafColors.textTertiary(for: s))
+                    }
                 }
                 .frame(width: 140, height: 200)
                 .background {
@@ -155,10 +166,11 @@ struct AddBookView: View {
         isSaving = true
         defer { isSaving = false }
 
-        // Storage'a göndermeden önce JPEG ile sıkıştırıyorum, boyutu düşürüyor
-        let compressed: Data? = coverData.flatMap {
-            UIImage(data: $0)?.jpegData(compressionQuality: 0.75)
-        }
+        // arama sonucundan seçilen kapak hâlâ arka planda iniyorsa bekliyoruz —
+        // yoksa erken "Kaydet"e basınca kitap kapaksız kaydoluyordu
+        await coverFetchTask?.value
+
+        // boyutlandırma + sıkıştırma artık uploadCover() içinde merkezi olarak yapılıyor
 
         if let book = bookToEdit {
             // düzenleme modundayız, mevcut kitabı güncelliyoruz
@@ -166,14 +178,14 @@ struct AddBookView: View {
             updated.title = title
             updated.author = author
             updated.totalPages = Int(totalPages) ?? book.totalPages
-            await store.updateBook(updated, newCoverData: compressed)
+            await store.updateBook(updated, newCoverData: coverData)
         } else {
             // her yeni kitap (arama, elle giriş, foto fark etmez) kataloğa
             // pending olarak gidiyor — admin onaylayana kadar görünmüyor
             await store.addBook(
                 title: title,
                 author: author,
-                coverImageData: compressed,
+                coverImageData: coverData,
                 totalPages: Int(totalPages) ?? 0,
                 isWishlist: isWishlist,
                 language: bookLanguage,
@@ -194,11 +206,13 @@ struct AddBookView: View {
         bookPublisher     = book.publisher
         bookPublishedYear = book.publishedDate
 
-        if let coverUrl = book.highResCoverURL {
-            Task {
-                if let (data, _) = try? await URLSession.shared.data(from: coverUrl) {
-                    await MainActor.run { self.coverData = data }
-                }
+        guard let coverUrl = book.highResCoverURL else { return }
+        isFetchingCover = true
+        coverFetchTask = Task {
+            let data = try? await URLSession.shared.data(from: coverUrl).0
+            await MainActor.run {
+                if let data { self.coverData = data }
+                self.isFetchingCover = false
             }
         }
     }

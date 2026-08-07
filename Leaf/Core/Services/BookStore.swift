@@ -435,7 +435,7 @@ final class BookStore: ObservableObject {
 
     func uploadCover(data: Data, path: String) async -> String? {
         do {
-            let compressed = UIImage(data: data)?.jpegData(compressionQuality: 0.75) ?? data
+            let compressed = Self.resizedAndCompressed(data)
             _ = try await supabase.storage
                 .from(bucketName)
                 .upload(
@@ -449,6 +449,27 @@ final class BookStore: ObservableObject {
             print("❌ Kapak yüklenemedi [\(path)]: \(error)")
             return nil
         }
+    }
+
+    // Google/OpenLibrary'den gelen kapaklar bazen gereğinden büyük (özellikle
+    // OpenLibrary "-L" boyutu) — grid'de küçük gösterilen bir kapak için o
+    // boyutu indirip saklamanın anlamı yok, hem yükleme hem her sonraki
+    // gösterimde indirme daha yavaş oluyor. En uzun kenarı 800px'e sabitliyoruz.
+    private static func resizedAndCompressed(_ data: Data, maxDimension: CGFloat = 800) -> Data {
+        guard let image = UIImage(data: data) else { return data }
+
+        let longestSide = max(image.size.width, image.size.height)
+        guard longestSide > maxDimension else {
+            return image.jpegData(compressionQuality: 0.75) ?? data
+        }
+
+        let scale = maxDimension / longestSide
+        let newSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        let renderer = UIGraphicsImageRenderer(size: newSize)
+        let resized = renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: newSize))
+        }
+        return resized.jpegData(compressionQuality: 0.75) ?? data
     }
 
 }

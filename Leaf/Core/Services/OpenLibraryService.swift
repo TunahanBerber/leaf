@@ -1,6 +1,7 @@
 // OpenLibraryService.swift
 // Google Books ve OpenLibrary'yi paralel çalıştırıyorum
 // Google hızlı gelince hemen gösteriyorum, OpenLibrary gelince (Türkçe'de daha kapsamlı) sonuçları birleştiriyorum
+// Sorguyu intitle:/inauthor: gibi alan bazlı kuruyoruz, sonra sonuçları query'ye benzerliğe göre skorlayıp sıralıyoruz
 
 import Foundation
 import Supabase
@@ -104,6 +105,10 @@ final class OpenLibraryService: ObservableObject {
     @Published var results: [BookSearchResult] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
+    // Google arka planda gelene kadar true kalıyor — results boşken bunu
+    // beklemeden "sonuç yok" göstermek, Google birazdan dolduracak olsa bile
+    // kullanıcıya yanlışlıkla arama boşmuş gibi görünmesine yol açıyordu
+    @Published var isSearchComplete = false
 
     private var searchTask: Task<Void, Never>?
 
@@ -138,14 +143,39 @@ final class OpenLibraryService: ObservableObject {
         results = []
         errorMessage = nil
         isLoading = false
+        isSearchComplete = false
+    }
+
+    // MARK: - Sorgu Ayrıştırma
+
+    // "yazar:" prefix'i ile kullanıcı açıkça yazar aramak istediğini belirtebiliyor,
+    // yoksa default olarak başlık araması varsayıyoruz (en yaygın kullanım)
+    private struct ParsedQuery {
+        enum Kind { case title, author }
+        let kind: Kind
+        let term: String
+    }
+
+    private static nonisolated func parseQuery(_ raw: String) -> ParsedQuery {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        let authorPrefixes = ["yazar:", "yazar :", "author:", "by:"]
+        let lowered = trimmed.lowercased()
+        for prefix in authorPrefixes where lowered.hasPrefix(prefix) {
+            let term = String(trimmed.dropFirst(prefix.count)).trimmingCharacters(in: .whitespaces)
+            return ParsedQuery(kind: .author, term: term)
+        }
+        return ParsedQuery(kind: .title, term: trimmed)
     }
 
     // MARK: - 3 Aşamalı Arama
 
     private func performSearch(query: String) async {
         isLoading = true
+        isSearchComplete = false
         errorMessage = nil
         results = []
+
+        let parsed = Self.parseQuery(query)
 
         // üç kaynağı aynı anda başlatıyorum
         async let catalogFetch = fetchCatalog(query: query)
@@ -160,13 +190,14 @@ final class OpenLibraryService: ObservableObject {
         // OpenLibrary daha doğru sonuç veriyor, onu bekleyip merge ediyorum
         let olResults = (try? await olFetch) ?? []
         guard !Task.isCancelled else { isLoading = false; return }
-        results = Self.mergeAll(catalog: catalogResults, google: [], openLibrary: olResults)
+        results = Self.mergeAll(catalog: catalogResults, google: [], openLibrary: olResults, parsed: parsed)
         isLoading = false
 
         // Google arka planda geliyor — OL'u tamamlıyor
         let googleResults = (try? await googleFetch) ?? []
         guard !Task.isCancelled else { return }
-        results = Self.mergeAll(catalog: catalogResults, google: googleResults, openLibrary: olResults)
+        results = Self.mergeAll(catalog: catalogResults, google: googleResults, openLibrary: olResults, parsed: parsed)
+        isSearchComplete = true
     }
 
     // MARK: - Katalog Arama (Supabase, en hızlısı)
@@ -208,9 +239,32 @@ final class OpenLibraryService: ObservableObject {
     // MARK: - Google Books (nonisolated — main actor'ı beklemeden çalışıyor)
 
     private static nonisolated func fetchGoogle(query: String) async throws -> [BookSearchResult] {
+        let parsed = parseQuery(query)
+        guard !parsed.term.isEmpty else { return [] }
+
+        switch parsed.kind {
+        case .author:
+            return try await fetchGoogle(fieldQuery: "inauthor:\(parsed.term)")
+        case .title:
+            // "yazar:" prefix'i yoksa kullanıcı bir kişi ismi de yazmış olabilir
+            // (örn. "Hakan Günday") — sadece intitle: ile aramak o yazarın YAZDIĞI
+            // kitapları değil, başlığında ismi geçen (hakkında yazılmış) kitapları
+            // buluyordu; kendi romanları hiç sorgulanmıyordu bile. İkisini birden
+            // soruyoruz, skorlama hangisinin daha alakalı olduğuna karar veriyor.
+            async let titleResults  = fetchGoogle(fieldQuery: "intitle:\(parsed.term)")
+            async let authorResults = fetchGoogle(fieldQuery: "inauthor:\(parsed.term)")
+            let (t, a) = try await (titleResults, authorResults)
+            var seen = Set<String>()
+            var merged: [BookSearchResult] = []
+            for r in t + a where seen.insert(r.id).inserted { merged.append(r) }
+            return merged
+        }
+    }
+
+    private static nonisolated func fetchGoogle(fieldQuery: String) async throws -> [BookSearchResult] {
         var comps = URLComponents(string: "https://www.googleapis.com/books/v1/volumes")!
         comps.queryItems = [
-            .init(name: "q",          value: query),
+            .init(name: "q",          value: fieldQuery),
             .init(name: "maxResults", value: "20"),
             .init(name: "printType",  value: "books")
         ]
@@ -241,12 +295,10 @@ final class OpenLibraryService: ObservableObject {
 
         let small   = toHTTPS(info.imageLinks?.smallThumbnail)
         let thumb   = toHTTPS(info.imageLinks?.thumbnail)
-        // zoom=1'i zoom=3'e çevirince daha yüksek çözünürlük geliyor
-        let highRes = toHTTPS(
-            info.imageLinks?.thumbnail?
-                .replacingOccurrences(of: "http://", with: "https://")
-                .replacingOccurrences(of: "zoom=1", with: "zoom=3")
-        )
+        // zoom=1'i zoom=3'e çevirip "yüksek çözünürlük" istemek bazı kitaplarda
+        // Google'ın gerçek kapak yerine kendi 575x750 "image not available"
+        // placeholder'ını sessizce (HTTP 200 ile) döndürmesine yol açıyordu —
+        // kaldırdık, zoom=1 zaten çalışan tek gerçek kaynak
 
         return BookSearchResult(
             id:             "gb_\(item.id)",
@@ -254,22 +306,45 @@ final class OpenLibraryService: ObservableObject {
             authors:        info.authors ?? [],
             pageCount:      info.pageCount,
             coverURL:       small ?? thumb,
-            highResCoverURL: highRes ?? thumb,
+            highResCoverURL: thumb ?? small,
             publisher:      info.publisher,
             publishedDate:  info.publishedDate,
             language:       info.language
         )
     }
 
-    // MARK: - OpenLibrary (arka planda — q parametresi her alanı tarıyor)
+    // MARK: - OpenLibrary (arka planda — title/author alanına göre daraltıyoruz)
 
     private static nonisolated func fetchOpenLibrary(query: String) async throws -> [BookSearchResult] {
-        var comps = URLComponents(string: "https://openlibrary.org/search.json")!
-        comps.queryItems = [
-            .init(name: "q",           value: query),
-            .init(name: "limit",       value: "12"),
-            .init(name: "fields",      value: "key,title,author_name,number_of_pages_median,cover_i,publisher,first_publish_year,language")
+        let parsed = parseQuery(query)
+        guard !parsed.term.isEmpty else { return [] }
+
+        switch parsed.kind {
+        case .author:
+            return try await fetchOpenLibrary(field: "author", term: parsed.term)
+        case .title:
+            // Google tarafındaki gerekçenin aynısı: prefix yoksa hem title hem
+            // author alanında arayıp birleştiriyoruz, tek başına title araması
+            // kişi ismi sorgularında gerçek yazarın kitaplarını atlıyordu.
+            async let titleResults  = fetchOpenLibrary(field: "title",  term: parsed.term)
+            async let authorResults = fetchOpenLibrary(field: "author", term: parsed.term)
+            let (t, a) = try await (titleResults, authorResults)
+            var seen = Set<String>()
+            var merged: [BookSearchResult] = []
+            for r in t + a where seen.insert(r.id).inserted { merged.append(r) }
+            return merged
+        }
+    }
+
+    private static nonisolated func fetchOpenLibrary(field: String, term: String) async throws -> [BookSearchResult] {
+        let items: [URLQueryItem] = [
+            .init(name: "limit",  value: "12"),
+            .init(name: "fields", value: "key,title,author_name,number_of_pages_median,cover_i,publisher,first_publish_year,language"),
+            .init(name: field,    value: term)
         ]
+
+        var comps = URLComponents(string: "https://openlibrary.org/search.json")!
+        comps.queryItems = items
         guard let url = comps.url else { return [] }
 
         let (data, resp) = try await Sessions.openLibrary.data(from: url)
@@ -303,11 +378,12 @@ final class OpenLibraryService: ObservableObject {
 
     // MARK: - Merge & Deduplicate
 
-    // sıralama: kendi kataloğumuz → Türkçe → OpenLibrary → Google
+    // sıralama: kendi kataloğumuz → relevance skoru → Türkçe → OpenLibrary → Google
     private static nonisolated func mergeAll(
         catalog: [BookSearchResult],
         google: [BookSearchResult],
-        openLibrary: [BookSearchResult]
+        openLibrary: [BookSearchResult],
+        parsed: ParsedQuery
     ) -> [BookSearchResult] {
         var seen: Set<String> = []
         var merged: [BookSearchResult] = []
@@ -318,18 +394,24 @@ final class OpenLibraryService: ObservableObject {
             if seen.insert(key).inserted { merged.append(r) }
         }
 
-        // geri kalanları dil ve kaynak sırasına göre sıralayıp ekliyorum
-        let rest = (openLibrary + google).sorted { a, b in
-            let aIsOL      = a.id.hasPrefix("ol_")
-            let bIsOL      = b.id.hasPrefix("ol_")
-            let aIsTurkish = a.language == "tr" || a.language == "tur"
-            let bIsTurkish = b.language == "tr" || b.language == "tur"
-            if aIsTurkish != bIsTurkish { return aIsTurkish }
-            if aIsOL != bIsOL { return aIsOL }
-            return false
-        }
+        // her sonucu query'ye ne kadar benzediğine göre skorluyoruz, alakasızları eliyoruz,
+        // eşit skorlarda dil/kaynak önceliği devreye giriyor
+        let scoredRest = (openLibrary + google)
+            .map { r in (result: r, score: relevanceScore(for: r, parsed: parsed)) }
+            .filter { $0.score >= 5 }
+            .sorted { a, b in
+                if abs(a.score - b.score) > 1 { return a.score > b.score }
 
-        for r in rest {
+                let aIsOL      = a.result.id.hasPrefix("ol_")
+                let bIsOL      = b.result.id.hasPrefix("ol_")
+                let aIsTurkish = a.result.language == "tr" || a.result.language == "tur"
+                let bIsTurkish = b.result.language == "tr" || b.result.language == "tur"
+                if aIsTurkish != bIsTurkish { return aIsTurkish }
+                if aIsOL != bIsOL { return aIsOL }
+                return false
+            }
+
+        for (r, _) in scoredRest {
             let key = normalize(r.title + r.authorsText)
             if seen.insert(key).inserted { merged.append(r) }
         }
@@ -341,5 +423,72 @@ final class OpenLibraryService: ObservableObject {
         s.lowercased()
             .folding(options: .diacriticInsensitive, locale: .current)
             .filter { $0.isLetter || $0.isNumber }
+    }
+
+    // MARK: - Relevance Scoring
+
+    // query'ye başlık/yazar benzerliğine göre 0-100 arası skor üretiyoruz;
+    // tam eşleşme > prefix > substring > fuzzy (typo toleranslı) sırasıyla puanlanıyor
+    private static nonisolated func relevanceScore(for result: BookSearchResult, parsed: ParsedQuery) -> Double {
+        let term = normalize(parsed.term)
+        guard !term.isEmpty else { return 50 }
+
+        let title  = normalize(result.title)
+        let author = normalize(result.authorsText)
+
+        func matchScore(_ text: String) -> Double {
+            guard !text.isEmpty else { return 0 }
+            if text == term { return 100 }
+            if text.hasPrefix(term) { return 90 }
+            if text.contains(term) { return 75 }
+            return similarity(text, term) * 60
+        }
+
+        let titleScore  = matchScore(title)
+        let authorScore = matchScore(author)
+
+        switch parsed.kind {
+        case .author:
+            // yazar araması: yazar eşleşmesi asıl, başlık ikincil
+            return max(authorScore, titleScore * 0.3)
+        case .title:
+            // "yazar:" prefix'i olmayan sorgularda güçlü (tam/prefix/substring,
+            // >=75) bir yazar eşleşmesi artık title'la eşit ağırlıkta — "Hakan
+            // Günday" gibi kişi adı sorgularında onun HAKKINDA yazılmış kitaplar
+            // yerine kendi romanları öne çıksın diye. Ama sadece fuzzy (typo
+            // toleranslı, <75) yazar eşleşmesi hâlâ indirimli kalıyor — yoksa
+            // "harry poter" gibi typo'lu aramalarda author alanı kötü kullanılmış
+            // (örn. ürün adı = "Harry Potter") kayıtlar gerçek kitapların önüne geçiyor.
+            let authorWeight = authorScore >= 75 ? 1.0 : 0.5
+            return max(titleScore, authorScore * authorWeight)
+        }
+    }
+
+    // Levenshtein tabanlı normalize edilmiş benzerlik (0...1) — typo'lara toleranslı
+    private static nonisolated func similarity(_ a: String, _ b: String) -> Double {
+        guard !a.isEmpty, !b.isEmpty else { return 0 }
+        let distance = levenshteinDistance(a, b)
+        let maxLen = max(a.count, b.count)
+        guard maxLen > 0 else { return 0 }
+        return 1.0 - (Double(distance) / Double(maxLen))
+    }
+
+    private static nonisolated func levenshteinDistance(_ a: String, _ b: String) -> Int {
+        let aChars = Array(a)
+        let bChars = Array(b)
+        guard !aChars.isEmpty else { return bChars.count }
+        guard !bChars.isEmpty else { return aChars.count }
+
+        var dp = Array(0...bChars.count)
+        for i in 1...aChars.count {
+            var prev = dp[0]
+            dp[0] = i
+            for j in 1...bChars.count {
+                let temp = dp[j]
+                dp[j] = aChars[i - 1] == bChars[j - 1] ? prev : 1 + min(prev, dp[j], dp[j - 1])
+                prev = temp
+            }
+        }
+        return dp[bChars.count]
     }
 }
