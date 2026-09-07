@@ -18,7 +18,8 @@ struct InboxView: View {
                     if socialService.isLoading {
                         ProgressView()
                             .tint(LeafColors.accent(for: colorScheme))
-                    } else if socialService.pendingRequests.isEmpty && socialService.conversations.isEmpty {
+                    } else if socialService.pendingRequests.isEmpty
+                        && socialService.conversations.isEmpty {
                         emptyState
                     } else {
                         contentList

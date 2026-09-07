@@ -52,6 +52,7 @@ final class SocialService: ObservableObject {
     @Published var discoveredUsers: [UserProfile] = []
     @Published var conversations: [Conversation] = []
     @Published var pendingRequests: [ConversationRequest] = []  // gelen bekleyen istekler
+    @Published var sentRequests: [ConversationRequest] = []     // benim gönderdiğim, henüz yanıtlanmamış istekler
     @Published var messages: [Message] = []
     @Published var blockedUsers: [UserProfile] = []
     @Published var isLoading = false
@@ -321,8 +322,45 @@ final class SocialService: ObservableObject {
                 .execute()
 
             pendingRequests.removeAll { $0.id == request.id }
+            sentRequests.removeAll { $0.id == request.id }
         } catch {
             self.error = "İstek reddedilemedi."
+        }
+    }
+
+    // benim gönderdiğim, karşı taraftan henüz yanıt gelmemiş istekler (Keşfet'te "İlgileniyorum" dediklerim)
+    func fetchSentRequests() async {
+        guard let userId = try? await supabase.auth.session.user.id.uuidString.lowercased() else { return }
+
+        do {
+            var requests: [ConversationRequest] = try await supabase
+                .from("conversation_requests")
+                .select()
+                .eq("sender_id", value: userId)
+                .eq("status", value: "pending")
+                .order("created_at", ascending: false)
+                .execute()
+                .value
+
+            // alıcı profillerini tek sorguda çek
+            let receiverIds = requests.map(\.receiverId)
+            if !receiverIds.isEmpty {
+                let profiles: [ProfileRecord] = (try? await supabase
+                    .from("profiles")
+                    .select()
+                    .in("id", values: receiverIds)
+                    .execute()
+                    .value) ?? []
+
+                let profileMap = Dictionary(uniqueKeysWithValues: profiles.map { ($0.id, $0.toUserProfile()) })
+                for i in requests.indices {
+                    requests[i].receiverProfile = profileMap[requests[i].receiverId]
+                }
+            }
+
+            sentRequests = requests
+        } catch {
+            self.error = "Gönderilen istekler yüklenemedi."
         }
     }
 
@@ -689,6 +727,7 @@ final class SocialService: ObservableObject {
             for await _ in deletedRequests {
                 guard let self else { break }
                 await self.fetchPendingRequests()
+                await self.fetchSentRequests()
             }
         }
 

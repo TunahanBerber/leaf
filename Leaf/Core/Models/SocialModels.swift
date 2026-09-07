@@ -51,6 +51,7 @@ struct ConversationRequest: Identifiable, Hashable, Codable {
     var status: String   // "pending" | "accepted" | "rejected"
     var createdAt: Date
     var senderProfile: UserProfile?
+    var receiverProfile: UserProfile?
 
     enum CodingKeys: String, CodingKey {
         case id
