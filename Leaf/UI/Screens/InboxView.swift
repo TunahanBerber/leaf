@@ -256,14 +256,18 @@ struct ConversationRow: View {
 
     var body: some View {
         HStack(spacing: LeafSpacing.md) {
-            Circle()
-                .fill(LeafColors.accent(for: colorScheme).opacity(isUnread ? 0.25 : 0.15))
-                .frame(width: 52, height: 52)
-                .overlay {
-                    Text(displayName.prefix(1).uppercased())
-                        .font(.title3.bold())
-                        .foregroundStyle(LeafColors.accent(for: colorScheme))
-                }
+            if let otherId = conversation.otherUser?.id {
+                RevealablePhotoView(userId: otherId, conversationId: conversation.id, size: 52)
+            } else {
+                Circle()
+                    .fill(LeafColors.accent(for: colorScheme).opacity(isUnread ? 0.25 : 0.15))
+                    .frame(width: 52, height: 52)
+                    .overlay {
+                        Text(displayName.prefix(1).uppercased())
+                            .font(.title3.bold())
+                            .foregroundStyle(LeafColors.accent(for: colorScheme))
+                    }
+            }
 
             VStack(alignment: .leading, spacing: LeafSpacing.xxs) {
                 Text(displayName)

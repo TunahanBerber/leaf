@@ -36,9 +36,18 @@ struct ConversationView: View {
                     inputArea
                 }
         }
-        .navigationTitle(otherUsername)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                HStack(spacing: LeafSpacing.xs) {
+                    if let otherUserId {
+                        RevealablePhotoView(userId: otherUserId, conversationId: conversationId, size: 32)
+                    }
+                    Text(otherUsername)
+                        .font(.headline)
+                        .foregroundStyle(LeafColors.textPrimary(for: colorScheme))
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button(role: .destructive) {

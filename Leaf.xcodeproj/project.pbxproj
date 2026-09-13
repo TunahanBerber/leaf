@@ -10,6 +10,7 @@
 		023B7999907660C8443A365C /* LeafGradientBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = B94D5CE82BAA5FC04FADE7B1 /* LeafGradientBackground.swift */; };
 		04EFABD7CC341FDABD0CA825 /* LeafApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA5FCA73E91A8FF71E3F51C6 /* LeafApp.swift */; };
 		0AC6037AE413AFF0B476FA2B /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 9364E06748B54F491606B620 /* Sentry */; };
+		1834CA247291309ACC6189A0 /* CityPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74FEAC448B53366F0BCACDC5 /* CityPickerSheet.swift */; };
 		1AE8FE799738939681BC7FAA /* BlockedUsersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6463668D9561434CA22C32DB /* BlockedUsersView.swift */; };
 		1CD3359E6CAF263C3FEDF50B /* SocialService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC3DC19C42591CFD3B9ABCEE /* SocialService.swift */; };
 		1CD5698A8D4BA595CF34FCBF /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 079B66E45437B83540285843 /* SettingsView.swift */; };
@@ -18,6 +19,7 @@
 		31E7D82B24AF5AA82BBC51F8 /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40AF0594D1EDCDA0EFCD2BF4 /* AuthView.swift */; };
 		36CFC30D511B3881BB98AD1D /* BookRecommendationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C86C2605FABDA1DF082FAD2F /* BookRecommendationSheet.swift */; };
 		42EFE9E0750816CF57E0DB1E /* Book.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE80BFC06CE6E477ACAE74B3 /* Book.swift */; };
+		44AE453D4402980E34CC97C7 /* TurkishProvinces.swift in Sources */ = {isa = PBXBuildFile; fileRef = 721E18BB4B3E3BEA9D743DDB /* TurkishProvinces.swift */; };
 		4C2B184DD4EDAE1DA09940CE /* WishlistView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5BC193F592725B909CB26A7 /* WishlistView.swift */; };
 		509A85CBBE09ADCD4B3A01E0 /* AddNoteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9757D30E4473E8E99771EA8D /* AddNoteView.swift */; };
 		5339F4408583134672959BFA /* SupabaseConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 666AA8349D78A37CC88DE286 /* SupabaseConfig.swift */; };
@@ -33,6 +35,7 @@
 		8F65624276FFCF4E2ACB8ACD /* NetworkHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 085D396B5556D97DF6B1F83E /* NetworkHelper.swift */; };
 		91A9C7E442AB4BA7C9170FD4 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2A654C4362EDCB2A4403423 /* ContentView.swift */; };
 		9D40A3537C5631E0DCB78902 /* BookStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED6E106B22E444D42C6AFC0A /* BookStore.swift */; };
+		9D5C33F869A3EA1D1EE99AE6 /* RevealablePhotoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EA517B139D86EF10EC8B5ED /* RevealablePhotoView.swift */; };
 		9E3131AF0263FC6BC60B73D0 /* CoverImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEB1D879C2F4C29FEB678566 /* CoverImageView.swift */; };
 		A592ECA93DAAB8EEBC75B8C4 /* BookDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D74E6ECDE26CCF8692B9F248 /* BookDetailView.swift */; };
 		AD1C1705B586C20D945B8280 /* SearchQualityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31ADFC20A32BB6BB08E51CC7 /* SearchQualityTests.swift */; };
@@ -64,6 +67,7 @@
 		01366E83E4B52AE4476676A7 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		079B66E45437B83540285843 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		085D396B5556D97DF6B1F83E /* NetworkHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkHelper.swift; sourceTree = "<group>"; };
+		1EA517B139D86EF10EC8B5ED /* RevealablePhotoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevealablePhotoView.swift; sourceTree = "<group>"; };
 		223E8FA3CC52FC68DB8234AA /* DiscoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverView.swift; sourceTree = "<group>"; };
 		23ECD5275D541486CF1FB4FE /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		24C9654D9C9858025687AEEA /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
@@ -79,6 +83,8 @@
 		67BC30D06622F9291DA78759 /* Leaf.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Leaf.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		68DAB62F4F69F4FB32F5F799 /* LeafTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LeafTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		71BC6F4FD03DEE1C48A40D84 /* BookNote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookNote.swift; sourceTree = "<group>"; };
+		721E18BB4B3E3BEA9D743DDB /* TurkishProvinces.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurkishProvinces.swift; sourceTree = "<group>"; };
+		74FEAC448B53366F0BCACDC5 /* CityPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityPickerSheet.swift; sourceTree = "<group>"; };
 		761251687E9AC2FE22D666C0 /* InboxView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboxView.swift; sourceTree = "<group>"; };
 		7A08637AB0704D1D8DB7F943 /* GlassCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassCard.swift; sourceTree = "<group>"; };
 		7BBCBDF099E6A9EC850C0F75 /* ProfileSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileSetupView.swift; sourceTree = "<group>"; };
@@ -189,10 +195,12 @@
 		2CA3E3EF4182FB398B741CF6 /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				74FEAC448B53366F0BCACDC5 /* CityPickerSheet.swift */,
 				AEB1D879C2F4C29FEB678566 /* CoverImageView.swift */,
 				7A08637AB0704D1D8DB7F943 /* GlassCard.swift */,
 				CFF7D276740E9B0B7B9B0C02 /* LeafComponents.swift */,
 				B94D5CE82BAA5FC04FADE7B1 /* LeafGradientBackground.swift */,
+				1EA517B139D86EF10EC8B5ED /* RevealablePhotoView.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -220,6 +228,7 @@
 				AE80BFC06CE6E477ACAE74B3 /* Book.swift */,
 				71BC6F4FD03DEE1C48A40D84 /* BookNote.swift */,
 				298A8537AA032AD7646D9095 /* SocialModels.swift */,
+				721E18BB4B3E3BEA9D743DDB /* TurkishProvinces.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -385,6 +394,7 @@
 				36CFC30D511B3881BB98AD1D /* BookRecommendationSheet.swift in Sources */,
 				80623FE84BDF07A07D3FF278 /* BookSearchView.swift in Sources */,
 				9D40A3537C5631E0DCB78902 /* BookStore.swift in Sources */,
+				1834CA247291309ACC6189A0 /* CityPickerSheet.swift in Sources */,
 				592E80DD7F76F84FC3126792 /* ContentFilter.swift in Sources */,
 				91A9C7E442AB4BA7C9170FD4 /* ContentView.swift in Sources */,
 				D5006A61065DFD63C4C735F5 /* ConversationView.swift in Sources */,
@@ -405,11 +415,13 @@
 				D8FE5F2D31EFCEBD4FD39E0B /* PrivacyPolicyView.swift in Sources */,
 				D6BB9BB04740A88F48702110 /* ProfileSetupView.swift in Sources */,
 				D3046EDF04CFE21156D3B18E /* PushNotificationService.swift in Sources */,
+				9D5C33F869A3EA1D1EE99AE6 /* RevealablePhotoView.swift in Sources */,
 				1CD5698A8D4BA595CF34FCBF /* SettingsView.swift in Sources */,
 				D0D4442EA7B641433275248C /* SocialModels.swift in Sources */,
 				1CD3359E6CAF263C3FEDF50B /* SocialService.swift in Sources */,
 				ECB275CB2B7CA420D02539F2 /* SupabaseAuthService.swift in Sources */,
 				5339F4408583134672959BFA /* SupabaseConfig.swift in Sources */,
+				44AE453D4402980E34CC97C7 /* TurkishProvinces.swift in Sources */,
 				7E7D5C073CAB76AB3B2F94C8 /* UserProfileView.swift in Sources */,
 				4C2B184DD4EDAE1DA09940CE /* WishlistView.swift in Sources */,
 			);

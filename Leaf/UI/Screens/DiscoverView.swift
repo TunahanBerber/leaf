@@ -232,25 +232,11 @@ struct DiscoverStackCard: View {
 
     // MARK: - Avatar
 
+    // Henüz sohbet yok (conversationId verilmiyor) — foto varsa bulanık önizleme
+    // gösterilir, reveal ikonu çıkmaz (o sadece gerçek bir sohbette anlamlı).
+    // Foto hiç yoksa RevealablePhotoView kendi silüet placeholder'ını gösterir.
     private var avatar: some View {
-        ZStack {
-            Circle()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            LeafColors.accent(for: colorScheme).opacity(0.38),
-                            LeafColors.accent(for: colorScheme).opacity(0.08)
-                        ],
-                        startPoint: .topLeading, endPoint: .bottomTrailing
-                    )
-                )
-            Circle()
-                .strokeBorder(LeafColors.accent(for: colorScheme).opacity(0.25), lineWidth: 1)
-            Text(profile.username.prefix(1).uppercased())
-                .font(.system(size: 44, weight: .bold))
-                .foregroundStyle(LeafColors.accent(for: colorScheme))
-        }
-        .frame(width: 96, height: 96)
+        RevealablePhotoView(userId: profile.id, size: 96)
     }
 }
 

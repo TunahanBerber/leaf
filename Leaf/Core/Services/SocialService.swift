@@ -3,6 +3,7 @@
 
 import Foundation
 import Supabase
+import UIKit
 
 // Supabase'den gelen profil kaydı (id string olarak geliyor)
 private struct ProfileRecord: Codable {
@@ -11,11 +12,15 @@ private struct ProfileRecord: Codable {
     var avatarUrl: String?
     var bio: String?
     var age: Int?
+    var gender: String?
+    var interestedIn: [String]?
+    var city: String?
     var socialEnabled: Bool?
 
     enum CodingKeys: String, CodingKey {
-        case id, username, bio, age
+        case id, username, bio, age, gender, city
         case avatarUrl = "avatar_url"
+        case interestedIn = "interested_in"
         case socialEnabled = "social_enabled"
     }
 
@@ -26,7 +31,11 @@ private struct ProfileRecord: Codable {
             avatarUrl: avatarUrl,
             bio: bio,
             age: age,
+            gender: gender,
+            interestedIn: interestedIn,
+            city: city,
             commonBookTitles: nil,
+            sameCity: nil,
             socialEnabled: socialEnabled
         )
     }
@@ -49,6 +58,9 @@ final class SocialService: ObservableObject {
     // MARK: - State
 
     @Published var currentProfile: UserProfile?
+    // Kendi profil fotoğrafımın durumu — Kitaplığım'daki avatar butonu gibi birden
+    // fazla ekranın aynı anda güncel kalması gereken tek paylaşılan kaynağı bu.
+    @Published var myPhotoReveal: PhotoReveal?
     @Published var discoveredUsers: [UserProfile] = []
     @Published var conversations: [Conversation] = []
     @Published var pendingRequests: [ConversationRequest] = []  // gelen bekleyen istekler
@@ -89,6 +101,7 @@ final class SocialService: ObservableObject {
                 .value
 
             currentProfile = records.first?.toUserProfile()
+            Task { await loadMyPhoto() }
         } catch {
             currentProfile = nil
         }
@@ -98,7 +111,18 @@ final class SocialService: ObservableObject {
 
     // MARK: - Profil Oluşturma
 
-    func createProfile(username: String, bio: String, age: Int) async -> Bool {
+    // gender/interestedIn/city sadece 18 yaş üzeri onboarding adımında gönderiliyor —
+    // reşit olmayanlardan eşleşme amaçlı veri toplamıyoruz. photoData verilirse
+    // profil oluştuktan sonra process-profile-photo Edge Function'ına yükleniyor.
+    func createProfile(
+        username: String,
+        bio: String,
+        age: Int,
+        gender: Gender? = nil,
+        interestedIn: [Gender]? = nil,
+        city: String? = nil,
+        photoData: Data? = nil
+    ) async -> Bool {
         guard let userId = try? await supabase.auth.session.user.id.uuidString.lowercased() else { return false }
         isLoading = true
         defer { isLoading = false }
@@ -109,6 +133,11 @@ final class SocialService: ObservableObject {
             "age":      .double(Double(age))
         ]
         if !bio.isEmpty { entry["bio"] = .string(bio) }
+        if let gender { entry["gender"] = .string(gender.rawValue) }
+        if let interestedIn, !interestedIn.isEmpty {
+            entry["interested_in"] = .array(interestedIn.map { .string($0.rawValue) })
+        }
+        if let city { entry["city"] = .string(city) }
 
         do {
             let saved: ProfileRecord = try await supabase
@@ -120,6 +149,10 @@ final class SocialService: ObservableObject {
                 .value
 
             currentProfile = saved.toUserProfile()
+
+            if let photoData {
+                _ = await uploadProfilePhoto(photoData)
+            }
             return true
         } catch {
             self.error = "Profil oluşturulamadı. Kullanıcı adı zaten alınmış olabilir."
@@ -152,6 +185,128 @@ final class SocialService: ObservableObject {
         } catch {
             self.error = "Profil güncellenemedi."
             return false
+        }
+    }
+
+    // Ayarlar'dan şehir değişikliği — diğer alanlardan bağımsız, hemen kaydediliyor
+    // (socialEnabled ile aynı optimistic-update deseni).
+    @discardableResult
+    func updateCity(_ city: String) async -> Bool {
+        guard let userId = try? await supabase.auth.session.user.id.uuidString.lowercased() else { return false }
+
+        let previous = currentProfile?.city
+        currentProfile?.city = city
+
+        do {
+            try await supabase
+                .from("profiles")
+                .update(["city": AnyJSON.string(city)])
+                .eq("id", value: userId)
+                .execute()
+            return true
+        } catch {
+            currentProfile?.city = previous
+            self.error = "Şehir güncellenemedi."
+            return false
+        }
+    }
+
+    // MARK: - Profil Fotoğrafı
+
+    // Ham JPEG baytları process-profile-photo Edge Function'ına gönderilir; orijinal +
+    // gerçekten bulanıklaştırılmış kopya orada (sunucu tarafında) üretilir.
+    @discardableResult
+    func uploadProfilePhoto(_ data: Data) async -> Bool {
+        struct UploadResult: Codable {
+            var ok: Bool
+            var url: String?
+        }
+        // PhotosPicker ham galeri fotoğrafını (genelde 10+ MP) olduğu gibi verir —
+        // bunu küçültmeden göndermek hem yükleme hem de Edge Function'ın JPEG decode
+        // adımını çok yavaşlatıyordu. BookStore.resizedAndCompressed ile aynı yaklaşım.
+        let payload = Self.resizedAndCompressed(data)
+        do {
+            let result: UploadResult = try await supabase.functions.invoke(
+                "process-profile-photo",
+                options: FunctionInvokeOptions(body: payload)
+            )
+            // Edge Function kendi fotoğrafımın signed URL'ini doğrudan döndürüyor —
+            // ayrıca get-profile-photo'yu çağırıp bir tur daha network beklemeye
+            // gerek yok, bu da yükleme sonrası görselin geç görünme hissini yaratıyordu.
+            if let urlString = result.url, let url = URL(string: urlString) {
+                myPhotoReveal = PhotoReveal(stage: .revealed, url: url)
+            }
+            return true
+        } catch {
+            print("[SocialService] uploadProfilePhoto error: \(error)")
+            self.error = "Fotoğraf yüklenemedi."
+            return false
+        }
+    }
+
+    // Kendi fotoğrafımın durumunu çekip myPhotoReveal'a yazar — Kitaplığım'daki
+    // avatar butonu ve Ayarlar'daki avatar gibi birden fazla ekran bunu okur.
+    func loadMyPhoto() async {
+        guard let userId = try? await supabase.auth.session.user.id.uuidString.lowercased() else { return }
+        myPhotoReveal = await fetchProfilePhoto(targetUserId: userId)
+    }
+
+    private static func resizedAndCompressed(_ data: Data, maxDimension: CGFloat = 800) -> Data {
+        guard let image = UIImage(data: data) else { return data }
+
+        let longestSide = max(image.size.width, image.size.height)
+        guard longestSide > maxDimension else {
+            return image.jpegData(compressionQuality: 0.85) ?? data
+        }
+
+        let scale = maxDimension / longestSide
+        let newSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        let renderer = UIGraphicsImageRenderer(size: newSize)
+        let resized = renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: newSize))
+        }
+        return resized.jpegData(compressionQuality: 0.85) ?? data
+    }
+
+    // Hangi varyantın (hiç/blur/orijinal) gösterileceğine sunucu karar veriyor —
+    // get-profile-photo Edge Function'ı gerçek eşleşme/onay durumuna bakıyor,
+    // client sadece dönen signed URL'i gösteriyor. Kendi fotoğrafın için her
+    // zaman "revealed" döner.
+    func fetchProfilePhoto(targetUserId: String) async -> PhotoReveal {
+        do {
+            let response: PhotoReveal = try await supabase.functions.invoke(
+                "get-profile-photo",
+                options: FunctionInvokeOptions(body: ["target_user_id": targetUserId])
+            )
+            return response
+        } catch {
+            print("[SocialService] fetchProfilePhoto error: \(error)")
+            return PhotoReveal(stage: .hidden, url: nil)
+        }
+    }
+
+    // Çağıranın kendi tarafındaki onay bayrağını çevirir; her iki taraf da onaylayınca
+    // get-profile-photo orijinali göstermeye başlar. Sadece eşleşme (conversation)
+    // bağlamında kullanılıyor — kendi profil fotoğrafın için gerekmiyor.
+    func confirmPhotoReveal(conversationId: String) async -> (userAConfirmed: Bool, userBConfirmed: Bool)? {
+        struct ConfirmResult: Codable {
+            var userAPhotoConfirmed: Bool
+            var userBPhotoConfirmed: Bool
+            enum CodingKeys: String, CodingKey {
+                case userAPhotoConfirmed = "user_a_photo_confirmed"
+                case userBPhotoConfirmed = "user_b_photo_confirmed"
+            }
+        }
+        do {
+            let result: ConfirmResult = try await supabase
+                .rpc("confirm_photo_reveal", params: ["p_conversation_id": AnyJSON.string(conversationId)])
+                .single()
+                .execute()
+                .value
+            return (result.userAPhotoConfirmed, result.userBPhotoConfirmed)
+        } catch {
+            print("[SocialService] confirmPhotoReveal error: \(error)")
+            return nil
         }
     }
 

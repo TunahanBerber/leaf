@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 struct SettingsView: View {
     @EnvironmentObject private var auth: SupabaseAuthService
@@ -20,6 +21,17 @@ struct SettingsView: View {
     @State private var isDeleting         = false
     @State private var showPrivacyPolicy  = false
 
+    // Fotoğraf ve şehir — sadece 18+ profillerde (eşleşme amaçlı alanlar)
+    @State private var newPhoto: PhotosPickerItem?
+    @State private var isUploadingPhoto = false
+    @State private var showCityPicker = false
+    @State private var isSavingCity = false
+
+    // Şehir ve sosyal özellikler switch'i gibi "seçince hemen kaydedilen" alanlar
+    // için — üstteki "Kaydet" butonuna basmaya gerek yok ama kullanıcı bunu
+    // anlamıyordu, o yüzden kısa bir "Kaydedildi" toast'ı + haptic ekliyoruz.
+    @State private var showSavedToast = false
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -34,6 +46,21 @@ struct SettingsView: View {
                 }
                 .listStyle(.insetGrouped)
                 .scrollContentBackground(.hidden)
+
+                if showSavedToast {
+                    VStack {
+                        Spacer()
+                        Label("Kaydedildi", systemImage: "checkmark.circle.fill")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, LeafSpacing.md)
+                            .padding(.vertical, LeafSpacing.sm)
+                            .background(.black.opacity(0.85), in: Capsule())
+                            .padding(.bottom, LeafSpacing.xl)
+                    }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .allowsHitTesting(false)
+                }
             }
             .navigationTitle("Ayarlar")
             .navigationBarTitleDisplayMode(.large)
@@ -69,9 +96,50 @@ struct SettingsView: View {
             .sheet(isPresented: $showPrivacyPolicy) {
                 PrivacyPolicyView()
             }
+            .sheet(isPresented: $showCityPicker) {
+                CityPickerSheet(selectedCity: cityBinding)
+            }
             .onAppear { loadCurrentValues() }
+            .onChange(of: newPhoto) { _, newValue in
+                Task {
+                    guard let data = try? await newValue?.loadTransferable(type: Data.self) else { return }
+                    isUploadingPhoto = true
+                    let success = await social.uploadProfilePhoto(data)
+                    isUploadingPhoto = false
+                    // avatarView artık social.myPhotoReveal'ı okuyor — uploadProfilePhoto
+                    // başarılı olunca onu zaten günceller, burada ekstra bir şey gerekmiyor.
+                }
+            }
         }
         .preferredColorScheme(resolvedScheme)
+    }
+
+    private var isAdultProfile: Bool { (social.currentProfile?.age ?? 0) >= 18 }
+
+    private var cityBinding: Binding<String?> {
+        Binding(
+            get: { social.currentProfile?.city },
+            set: { newValue in
+                guard let newValue else { return }
+                isSavingCity = true
+                Task {
+                    let success = await social.updateCity(newValue)
+                    isSavingCity = false
+                    if success { flashSaved() }
+                }
+            }
+        )
+    }
+
+    // Otomatik kaydedilen alanlar (şehir, sosyal özellikler switch'i) için kısa
+    // bir onay — haptic + 1.2sn görünüp kaybolan toast.
+    private func flashSaved() {
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        withAnimation(.easeOut(duration: 0.2)) { showSavedToast = true }
+        Task {
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            withAnimation(.easeIn(duration: 0.3)) { showSavedToast = false }
+        }
     }
 
     private var resolvedScheme: ColorScheme? {
@@ -87,14 +155,7 @@ struct SettingsView: View {
     private var profileSection: some View {
         Section {
             HStack(spacing: LeafSpacing.md) {
-                Circle()
-                    .fill(LeafColors.accent(for: colorScheme).opacity(0.15))
-                    .frame(width: 56, height: 56)
-                    .overlay {
-                        Text((social.currentProfile?.username ?? auth.currentUser?.email ?? "?").prefix(1).uppercased())
-                            .font(.title2.bold())
-                            .foregroundStyle(LeafColors.accent(for: colorScheme))
-                    }
+                avatarView
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(social.currentProfile?.username ?? "Kullanıcı")
@@ -133,9 +194,90 @@ struct SettingsView: View {
                 }
                 .listRowBackground(LeafColors.surfacePrimary(for: colorScheme))
             }
+
+            if isAdultProfile {
+                Button {
+                    showCityPicker = true
+                } label: {
+                    LabeledContent("Şehir") {
+                        HStack(spacing: LeafSpacing.xs) {
+                            if isSavingCity { ProgressView() }
+                            Text(social.currentProfile?.city ?? "Seç")
+                                .foregroundStyle(LeafColors.textTertiary(for: colorScheme))
+                            Image(systemName: "chevron.right")
+                                .font(.caption2)
+                                .foregroundStyle(LeafColors.textTertiary(for: colorScheme))
+                        }
+                    }
+                    .foregroundStyle(LeafColors.textPrimary(for: colorScheme))
+                }
+                .buttonStyle(.plain)
+                .disabled(isSavingCity)
+                .listRowBackground(LeafColors.surfacePrimary(for: colorScheme))
+            }
         } header: {
             Text("Profil")
         }
+    }
+
+    // Sadece 18+ profillerde tıklanarak fotoğraf değiştirilebilir — reşit
+    // olmayanlardan eşleşme fotoğrafı toplamıyoruz, düz baş harf avatarı kalıyor.
+    @ViewBuilder
+    private var avatarView: some View {
+        if isAdultProfile {
+            PhotosPicker(selection: $newPhoto, matching: .images) {
+                ZStack {
+                    // social.myPhotoReveal paylaşılan bir state — Kitaplığım'daki avatar
+                    // ve burası aynı kaynağı okur, upload sonrası ikisi de anında güncellenir.
+                    if case .revealed = social.myPhotoReveal?.stage, let url = social.myPhotoReveal?.url {
+                        AsyncImage(url: url) { phase in
+                            if let image = phase.image {
+                                image.resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: 56, height: 56)
+                                    .clipShape(Circle())
+                            } else {
+                                letterAvatar
+                            }
+                        }
+                    } else {
+                        letterAvatar
+                    }
+
+                    if isUploadingPhoto {
+                        Circle()
+                            .fill(.black.opacity(0.35))
+                            .frame(width: 56, height: 56)
+                        ProgressView().tint(.white)
+                    } else {
+                        Circle()
+                            .stroke(LeafColors.borderSubtle(for: colorScheme), lineWidth: 1)
+                            .frame(width: 56, height: 56)
+                        Image(systemName: "camera.fill")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(.white)
+                            .padding(4)
+                            .background(LeafColors.accent(for: colorScheme), in: Circle())
+                            .offset(x: 20, y: 20)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            .disabled(isUploadingPhoto)
+        } else {
+            letterAvatar
+        }
+    }
+
+    private var letterAvatar: some View {
+        Circle()
+            .fill(LeafColors.accent(for: colorScheme).opacity(0.15))
+            .frame(width: 56, height: 56)
+            .overlay {
+                Text((social.currentProfile?.username ?? auth.currentUser?.email ?? "?").prefix(1).uppercased())
+                    .font(.title2.bold())
+                    .foregroundStyle(LeafColors.accent(for: colorScheme))
+            }
     }
 
     // MARK: - Sosyal Bölümü
@@ -144,7 +286,10 @@ struct SettingsView: View {
         Binding(
             get: { social.currentProfile?.socialEnabled ?? true },
             set: { newValue in
-                Task { await social.updateSocialEnabled(newValue) }
+                Task {
+                    let success = await social.updateSocialEnabled(newValue)
+                    if success { flashSaved() }
+                }
             }
         )
     }

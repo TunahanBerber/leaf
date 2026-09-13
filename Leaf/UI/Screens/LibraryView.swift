@@ -37,15 +37,7 @@ struct LibraryView: View {
                     Button {
                         showSettings = true
                     } label: {
-                        ZStack {
-                            Circle()
-                                .fill(themeColor.opacity(0.15))
-                                .frame(width: 32, height: 32)
-                            Text(userInitial)
-                                .font(.system(size: 14, weight: .bold, design: .rounded))
-                                .foregroundStyle(themeColor)
-                        }
-                        .overlay(Circle().stroke(themeColor.opacity(0.3), lineWidth: 0.5))
+                        avatarButtonLabel
                     }
                 }
 
@@ -66,6 +58,9 @@ struct LibraryView: View {
                     .environmentObject(auth)
                     .environmentObject(social)
             }
+            .task(id: social.currentProfile?.id) {
+                await social.loadMyPhoto()
+            }
         }
     }
 
@@ -75,6 +70,40 @@ struct LibraryView: View {
         case "dark":  return .indigo
         default:      return LeafColors.primaryLight
         }
+    }
+
+    // Fotoğraf yüklenmemişse aynen eski harf-avatarı gösteriyoruz; fotoğraf
+    // varsa (myPhotoReveal .revealed döndüyse) onun yerine gerçek fotoğrafı basıyoruz.
+    @ViewBuilder
+    private var avatarButtonLabel: some View {
+        if case .revealed = social.myPhotoReveal?.stage, let url = social.myPhotoReveal?.url {
+            AsyncImage(url: url) { phase in
+                if let image = phase.image {
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 32, height: 32)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(themeColor.opacity(0.3), lineWidth: 0.5))
+                } else {
+                    initialAvatar
+                }
+            }
+        } else {
+            initialAvatar
+        }
+    }
+
+    private var initialAvatar: some View {
+        ZStack {
+            Circle()
+                .fill(themeColor.opacity(0.15))
+                .frame(width: 32, height: 32)
+            Text(userInitial)
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundStyle(themeColor)
+        }
+        .overlay(Circle().stroke(themeColor.opacity(0.3), lineWidth: 0.5))
     }
 
 }

@@ -8,7 +8,12 @@ struct UserProfile: Identifiable, Hashable, Codable {
     var avatarUrl: String?
     var bio: String?
     var age: Int?
+    // Eşleşme amaçlı alanlar — sadece 18 yaş üzeri kullanıcılarda dolu olur.
+    var gender: String?
+    var interestedIn: [String]?
+    var city: String?
     var commonBookTitles: [String]?
+    var sameCity: Bool?
     // Keşfet/Mesajlar sekmelerini gösterip göstermeme tercihi — hesaba bağlı,
     // cihazlar arası senkron olsun diye burada tutuyoruz (eskiden lokal UserDefaults'taydı).
     // discover_users RPC'si bu kolonu döndürmüyor, o yüzden optional.
@@ -18,10 +23,42 @@ struct UserProfile: Identifiable, Hashable, Codable {
         case id = "profile_id"
         case username
         case avatarUrl       = "avatar_url"
-        case bio, age
+        case bio, age, gender, city
+        case interestedIn     = "interested_in"
         case commonBookTitles = "common_book_titles"
+        case sameCity          = "same_city"
         case socialEnabled    = "social_enabled"
     }
+}
+
+// MARK: - Gender
+
+enum Gender: String, Codable, CaseIterable, Identifiable {
+    case male, female, other
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .male: return "Erkek"
+        case .female: return "Kadın"
+        case .other: return "Diğer"
+        }
+    }
+}
+
+// MARK: - Photo Reveal
+
+enum PhotoRevealStage: String, Codable {
+    case hidden    // henüz eşleşme yok — kart aşaması
+    case none      // fotoğraf hiç yüklenmemiş
+    case blurred   // eşleşme var, ikisi de onaylamamış
+    case revealed  // kendi fotoğrafın ya da her iki taraf da onayladı
+}
+
+struct PhotoReveal: Codable {
+    var stage: PhotoRevealStage
+    var url: URL?
 }
 
 // MARK: - Conversation
