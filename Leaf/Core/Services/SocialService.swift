@@ -250,6 +250,15 @@ final class SocialService {
             if let urlString = result.url, let url = URL(string: urlString) {
                 myPhotoReveal = PhotoReveal(stage: .revealed, url: url)
             }
+            // RevealablePhotoView'ın görsel önbelleğini de hemen taze byte'larla
+            // besliyoruz — elimizdeki payload zaten sunucuya gönderdiğimizin aynısı
+            // (orijinal, sunucu sadece kaydediyor, değiştirmiyor). Böylece Kitaplığım/
+            // Ayarlar'daki avatar bu yeni fotoğrafı göstermek için imzalı URL'i tekrar
+            // indirmek zorunda kalmıyor, path aynı kaldığı için eski byte'ların üzerine
+            // hemen doğru olanı yazmış oluyoruz.
+            if let userId = try? await supabase.auth.session.user.id.uuidString.lowercased() {
+                ProfilePhotoCacheStore.shared.set("\(userId)/original.jpg", data: payload)
+            }
             return true
         } catch {
             print("[SocialService] uploadProfilePhoto error: \(error)")
