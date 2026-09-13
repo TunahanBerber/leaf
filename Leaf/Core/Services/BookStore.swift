@@ -435,7 +435,11 @@ final class BookStore: ObservableObject {
 
     func uploadCover(data: Data, path: String) async -> String? {
         do {
-            let compressed = Self.resizedAndCompressed(data)
+            // BookStore @MainActor olduğu için bu fonksiyon (decode+resize+encode,
+            // gerçek CPU işi) main actor'da senkron çağrılırsa UI'ı (scroll,
+            // animasyon, dokunma) o sürece kadar dondurur. Task.detached ile
+            // arka plana alıp sadece sonucu bekliyoruz.
+            let compressed = await Task.detached { Self.resizedAndCompressed(data) }.value
             _ = try await supabase.storage
                 .from(bucketName)
                 .upload(
@@ -455,7 +459,7 @@ final class BookStore: ObservableObject {
     // OpenLibrary "-L" boyutu) — grid'de küçük gösterilen bir kapak için o
     // boyutu indirip saklamanın anlamı yok, hem yükleme hem her sonraki
     // gösterimde indirme daha yavaş oluyor. En uzun kenarı 800px'e sabitliyoruz.
-    private static func resizedAndCompressed(_ data: Data, maxDimension: CGFloat = 800) -> Data {
+    nonisolated private static func resizedAndCompressed(_ data: Data, maxDimension: CGFloat = 800) -> Data {
         guard let image = UIImage(data: data) else { return data }
 
         let longestSide = max(image.size.width, image.size.height)

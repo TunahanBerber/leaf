@@ -244,7 +244,10 @@ final class SocialService {
         // PhotosPicker ham galeri fotoğrafını (genelde 10+ MP) olduğu gibi verir —
         // bunu küçültmeden göndermek hem yükleme hem de Edge Function'ın JPEG decode
         // adımını çok yavaşlatıyordu. BookStore.resizedAndCompressed ile aynı yaklaşım.
-        let payload = Self.resizedAndCompressed(data)
+        // SocialService @MainActor olduğu için bu senkron decode+resize+encode işini
+        // Task.detached ile arka plana alıyoruz — yoksa büyük bir galeri fotoğrafında
+        // UI (scroll, animasyon, dokunma) bu süre boyunca donuyordu.
+        let payload = await Task.detached { Self.resizedAndCompressed(data) }.value
         do {
             let result: UploadResult = try await supabase.functions.invoke(
                 "process-profile-photo",
@@ -321,7 +324,7 @@ final class SocialService {
         return Date().timeIntervalSince(cachedAt) < photoRevealFreshWindow
     }
 
-    private static func resizedAndCompressed(_ data: Data, maxDimension: CGFloat = 800) -> Data {
+    nonisolated private static func resizedAndCompressed(_ data: Data, maxDimension: CGFloat = 800) -> Data {
         guard let image = UIImage(data: data) else { return data }
 
         let longestSide = max(image.size.width, image.size.height)
