@@ -3,7 +3,7 @@ import PhotosUI
 
 struct SettingsView: View {
     @EnvironmentObject private var auth: SupabaseAuthService
-    @EnvironmentObject private var social: SocialService
+    @Environment(SocialService.self) private var social
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
 
@@ -315,7 +315,6 @@ struct SettingsView: View {
 
             NavigationLink {
                 BlockedUsersView()
-                    .environmentObject(social)
             } label: {
                 Label("Engellenen Kullanıcılar", systemImage: "hand.raised.fill")
                     .foregroundStyle(LeafColors.textPrimary(for: colorScheme))

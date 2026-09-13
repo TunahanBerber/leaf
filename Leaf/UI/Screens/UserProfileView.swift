@@ -2,7 +2,7 @@ import SwiftUI
 
 struct UserProfileView: View {
     let profile: UserProfile
-    @EnvironmentObject var socialService: SocialService
+    @Environment(SocialService.self) var socialService
     @Environment(\.colorScheme) var colorScheme
 
     @State private var requestStatus: String? = nil   // nil | "pending" | "accepted"
@@ -53,7 +53,6 @@ struct UserProfileView: View {
         .task { await loadStatus() }
         .navigationDestination(item: $navigateToConvId) { convId in
             ConversationView(conversationId: convId, otherUsername: profile.username)
-                .environmentObject(socialService)
         }
         .alert("İstek Gönderildi", isPresented: $showSuccess) {
             Button("Tamam", role: .cancel) { }

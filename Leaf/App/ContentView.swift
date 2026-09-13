@@ -12,7 +12,7 @@ enum MainTab: Int {
 struct ContentView: View {
     @EnvironmentObject private var auth: SupabaseAuthService
     @EnvironmentObject private var store: BookStore
-    @EnvironmentObject private var social: SocialService
+    @Environment(SocialService.self) private var social
 
     var body: some View {
         Group {
@@ -23,12 +23,10 @@ struct ContentView: View {
                 } else if social.currentProfile == nil {
                     // giriş yapıldı ama profil yok → kurulum ekranı
                     ProfileSetupView()
-                        .environmentObject(social)
                 } else {
                     MainTabView()
                         .environmentObject(auth)
                         .environmentObject(store)
-                        .environmentObject(social)
                         .task { await store.fetchAll() }
                 }
             } else {
@@ -65,7 +63,7 @@ struct ContentView: View {
 struct MainTabView: View {
     @EnvironmentObject private var auth: SupabaseAuthService
     @EnvironmentObject private var store: BookStore
-    @EnvironmentObject private var social: SocialService
+    @Environment(SocialService.self) private var social
     @EnvironmentObject private var pushService: PushNotificationService
     @State private var selectedTab: MainTab = .library
     @Environment(\.scenePhase) private var scenePhase
@@ -76,7 +74,6 @@ struct MainTabView: View {
         TabView(selection: $selectedTab) {
 
             LibraryView()
-                .environmentObject(social)
                 .tabItem {
                     Label("Kitaplığım", systemImage: "books.vertical.fill")
                 }
@@ -84,14 +81,12 @@ struct MainTabView: View {
 
             if showSocial {
                 DiscoverView()
-                    .environmentObject(social)
                     .tabItem {
                         Label("Keşfet", systemImage: "person.2.fill")
                     }
                     .tag(MainTab.discover)
 
                 InboxView()
-                    .environmentObject(social)
                     .environmentObject(auth)
                     .tabItem {
                         Label("Mesajlar", systemImage: "message.fill")
@@ -136,5 +131,5 @@ struct MainTabView: View {
     ContentView()
         .environmentObject(SupabaseAuthService())
         .environmentObject(BookStore())
-        .environmentObject(SocialService())
+        .environment(SocialService())
 }

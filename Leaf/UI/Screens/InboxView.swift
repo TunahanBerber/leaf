@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct InboxView: View {
-    @EnvironmentObject var socialService: SocialService
+    @Environment(SocialService.self) var socialService
     @EnvironmentObject var auth: SupabaseAuthService
     @Environment(\.colorScheme) var colorScheme
 
@@ -52,7 +52,6 @@ struct InboxView: View {
                     conversationId: convId,
                     otherUsername: navigateToUsername ?? "Kullanıcı"
                 )
-                .environmentObject(socialService)
                 .environmentObject(auth)
             }
         }
@@ -73,7 +72,6 @@ struct InboxView: View {
                                 navigateToConvId = convId
                             }
                         )
-                        .environmentObject(socialService)
                         .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
@@ -94,7 +92,6 @@ struct InboxView: View {
                                 conversationId: conversation.id,
                                 otherUsername: conversation.otherUser?.username ?? "Kullanıcı"
                             )
-                            .environmentObject(socialService)
                             .environmentObject(auth)
                         } label: {
                             ConversationRow(conversation: conversation, isUnread: isUnread)
@@ -165,7 +162,7 @@ struct RequestRow: View {
     let request: ConversationRequest
     let onAccepted: (String, String) -> Void   // convId, username
 
-    @EnvironmentObject var socialService: SocialService
+    @Environment(SocialService.self) var socialService
     @Environment(\.colorScheme) var colorScheme
     @State private var isActing = false
 

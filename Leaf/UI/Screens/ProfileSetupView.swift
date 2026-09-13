@@ -2,7 +2,7 @@ import SwiftUI
 import PhotosUI
 
 struct ProfileSetupView: View {
-    @EnvironmentObject var social: SocialService
+    @Environment(SocialService.self) var social
     @Environment(\.colorScheme) var colorScheme
 
     @State private var username = ""

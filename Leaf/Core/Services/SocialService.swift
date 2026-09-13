@@ -2,6 +2,7 @@
 // Tüm sosyal işlemler buradan geçiyor — keşif, sohbet, mesajlaşma ve Realtime
 
 import Foundation
+import Observation
 import Supabase
 import UIKit
 
@@ -52,33 +53,40 @@ private struct BlockedUserRow: Codable {
     }
 }
 
+// @Observable (Observation framework, iOS 17+) property-bazlı izleme sağlıyor —
+// bir view sadece body'sinde gerçekten okuduğu property değişince re-render olur.
+// Eskiden ObservableObject + @Published idi: o modelde TEK bir property değişince
+// (mesela mesaj listesi) bu servisi @EnvironmentObject ile tutan HER view yeniden
+// render oluyordu (Library/Discover/Inbox aynı anda TabView'de canlı kaldığı için),
+// property'yi hiç okumasa bile. @Observable bunu ortadan kaldırıyor.
 @MainActor
-final class SocialService: ObservableObject {
+@Observable
+final class SocialService {
 
     // MARK: - State
 
-    @Published var currentProfile: UserProfile?
+    var currentProfile: UserProfile?
     // Kendi profil fotoğrafımın durumu — Kitaplığım'daki avatar butonu gibi birden
     // fazla ekranın aynı anda güncel kalması gereken tek paylaşılan kaynağı bu.
-    @Published var myPhotoReveal: PhotoReveal?
+    var myPhotoReveal: PhotoReveal?
     // Başkalarının fotoğraf durumu için paylaşılan önbellek — Discover kartları ve
     // Mesajlar listesi gibi yerlerde her avatarın kendi başına ayrı bir network
     // isteği atıp "önce avatar, sonra fotoğraf" gecikmesi yaratmasını önlüyor.
     // prefetchPhotoReveals(for:) ile toplu doldurulur, RevealablePhotoView önce
     // buradan okur.
-    @Published var photoRevealCache: [String: PhotoReveal] = [:]
-    @Published var discoveredUsers: [UserProfile] = []
-    @Published var conversations: [Conversation] = []
-    @Published var pendingRequests: [ConversationRequest] = []  // gelen bekleyen istekler
-    @Published var sentRequests: [ConversationRequest] = []     // benim gönderdiğim, henüz yanıtlanmamış istekler
-    @Published var messages: [Message] = []
-    @Published var blockedUsers: [UserProfile] = []
-    @Published var isLoading = false
-    @Published var error: String?
-    @Published var unreadCount: Int = 0
+    var photoRevealCache: [String: PhotoReveal] = [:]
+    var discoveredUsers: [UserProfile] = []
+    var conversations: [Conversation] = []
+    var pendingRequests: [ConversationRequest] = []  // gelen bekleyen istekler
+    var sentRequests: [ConversationRequest] = []     // benim gönderdiğim, henüz yanıtlanmamış istekler
+    var messages: [Message] = []
+    var blockedUsers: [UserProfile] = []
+    var isLoading = false
+    var error: String?
+    var unreadCount: Int = 0
 
     // profil henüz yüklenmedi mi (nil) vs yüklendi ama yok (currentProfile == nil)
-    @Published var profileLoaded = false
+    var profileLoaded = false
 
     // 18 yaş altı sosyal özelliklere erişemez
     var isSocialAllowed: Bool {

@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct BlockedUsersView: View {
-    @EnvironmentObject var social: SocialService
+    @Environment(SocialService.self) var social
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
@@ -57,7 +57,7 @@ struct BlockedUsersView: View {
 
 private struct BlockedUserRowView: View {
     let profile: UserProfile
-    @EnvironmentObject var social: SocialService
+    @Environment(SocialService.self) var social
     @Environment(\.colorScheme) var colorScheme
     @State private var isUnblocking = false
 

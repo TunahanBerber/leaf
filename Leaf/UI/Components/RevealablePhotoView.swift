@@ -9,7 +9,7 @@ struct RevealablePhotoView: View {
     var conversationId: String? = nil
     var size: CGFloat = 56
 
-    @EnvironmentObject var social: SocialService
+    @Environment(SocialService.self) var social
     @Environment(\.colorScheme) var colorScheme
     @State private var reveal = PhotoReveal(stage: .hidden, url: nil)
     @State private var hasConfirmed = false

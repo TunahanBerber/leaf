@@ -35,7 +35,7 @@ struct LeafApp: App {
 
     // tek veri kaynağı bu store — tüm okuma/yazma Supabase üzerinden
     @StateObject private var store = BookStore()
-    @StateObject private var social = SocialService()
+    @State private var social = SocialService()
     @StateObject private var pushService = PushNotificationService.shared
 
     init() {
@@ -55,7 +55,7 @@ struct LeafApp: App {
                 .preferredColorScheme(resolvedScheme)
                 .environmentObject(auth)
                 .environmentObject(store)
-                .environmentObject(social)
+                .environment(social)
                 .environmentObject(pushService)
                 // Google OAuth'tan dönen URL'yi auth servisine iletiyorum
                 .onOpenURL { url in

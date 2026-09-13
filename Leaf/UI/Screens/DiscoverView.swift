@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct DiscoverView: View {
-    @EnvironmentObject var socialService: SocialService
+    @Environment(SocialService.self) var socialService
     @Environment(\.colorScheme) var colorScheme
     @State private var navigateToProfile: UserProfile?
     // geçilen kullanıcılar bu oturumda destede tekrar görünmesin
@@ -67,7 +67,6 @@ struct DiscoverView: View {
             }
             .sheet(isPresented: $showSentRequests) {
                 SentRequestsSheet()
-                    .environmentObject(socialService)
             }
         }
     }
@@ -250,7 +249,7 @@ struct DiscoverStackCard: View {
 // Realtime ile otomatik "Sohbetler"e taşınır, reddederse listeden düşer —
 // bu sheet sadece socialService.sentRequests'i yansıtıyor, kendi state'i yok.
 struct SentRequestsSheet: View {
-    @EnvironmentObject var socialService: SocialService
+    @Environment(SocialService.self) var socialService
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.dismiss) var dismiss
 

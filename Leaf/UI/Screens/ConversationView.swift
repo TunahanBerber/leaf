@@ -6,7 +6,7 @@ struct ConversationView: View {
     let conversationId: String
     let otherUsername: String
 
-    @EnvironmentObject var socialService: SocialService
+    @Environment(SocialService.self) var socialService
     @EnvironmentObject var auth: SupabaseAuthService
     @Environment(\.colorScheme) var colorScheme
 

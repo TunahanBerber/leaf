@@ -3,7 +3,7 @@ import SwiftUI
 struct LibraryView: View {
     @EnvironmentObject private var auth: SupabaseAuthService
     @EnvironmentObject private var store: BookStore
-    @EnvironmentObject private var social: SocialService
+    @Environment(SocialService.self) private var social
 
     @State private var showAddBook    = false
     @State private var showSettings   = false
@@ -56,7 +56,6 @@ struct LibraryView: View {
             .sheet(isPresented: $showSettings) {
                 SettingsView()
                     .environmentObject(auth)
-                    .environmentObject(social)
             }
             .task(id: social.currentProfile?.id) {
                 await social.loadMyPhoto()
