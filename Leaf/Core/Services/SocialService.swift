@@ -75,6 +75,12 @@ final class SocialService {
     // prefetchPhotoReveals(for:) ile toplu doldurulur, RevealablePhotoView önce
     // buradan okur.
     var photoRevealCache: [String: PhotoReveal] = [:]
+    // photoRevealCache girdilerinin ne zaman yazıldığını tutuyoruz — Edge Function'ların
+    // ürettiği signed URL'lerin ömrü 300sn. Bu pencerenin içindeyken aynı kullanıcı için
+    // tekrar sorgu atmak (özellikle prefetchPhotoReveals'ta toplu olarak) tamamen gereksiz;
+    // dışına çıktıysa signed URL'in süresi dolmuş olabileceğinden yenilemek gerekiyor.
+    private var photoRevealCachedAt: [String: Date] = [:]
+    private let photoRevealFreshWindow: TimeInterval = 270
     var discoveredUsers: [UserProfile] = []
     var conversations: [Conversation] = []
     var pendingRequests: [ConversationRequest] = []  // gelen bekleyen istekler
@@ -280,7 +286,11 @@ final class SocialService {
     // Edge Function'ı tek bir SQL RPC'siyle stage'leri, tek bir Storage batch
     // çağrısıyla da signed URL'leri hesaplıyor — N ayrı istek yerine 1 istek.
     func prefetchPhotoReveals(for userIds: [String]) async {
-        let ids = Array(Set(userIds)).filter { !$0.isEmpty }
+        // Zaten taze bir kaydı olan id'leri tekrar sorgulamıyoruz — yoksa her
+        // discoverUsers()/fetchConversations() çağrısı, TTL içinde olsalar bile
+        // TÜM listenin fotoğraf durumunu yeniden çekiyordu (ör. bir sohbetten
+        // çıkınca tetiklenen fetchConversations() gibi).
+        let ids = Array(Set(userIds)).filter { !$0.isEmpty && !isPhotoRevealFresh(for: $0) }
         guard !ids.isEmpty else { return }
 
         struct BatchResponse: Codable {
@@ -291,10 +301,24 @@ final class SocialService {
                 "get-profile-photos",
                 options: FunctionInvokeOptions(body: ["target_user_ids": ids])
             )
-            photoRevealCache.merge(response.results) { _, new in new }
+            for (userId, reveal) in response.results {
+                cachePhotoReveal(reveal, for: userId)
+            }
         } catch {
             print("[SocialService] prefetchPhotoReveals error: \(error)")
         }
+    }
+
+    // photoRevealCache/photoRevealCachedAt'e her yazan yer (prefetch, tekil fetch)
+    // buradan geçmeli — ikisini birlikte güncel tutmanın tek yolu bu.
+    func cachePhotoReveal(_ reveal: PhotoReveal, for userId: String) {
+        photoRevealCache[userId] = reveal
+        photoRevealCachedAt[userId] = Date()
+    }
+
+    func isPhotoRevealFresh(for userId: String) -> Bool {
+        guard photoRevealCache[userId] != nil, let cachedAt = photoRevealCachedAt[userId] else { return false }
+        return Date().timeIntervalSince(cachedAt) < photoRevealFreshWindow
     }
 
     private static func resizedAndCompressed(_ data: Data, maxDimension: CGFloat = 800) -> Data {

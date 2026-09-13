@@ -139,14 +139,16 @@ struct RevealablePhotoView: View {
     }
 
     private func load(forceRefresh: Bool = false) async {
-        // Prefetch zaten doldurmuşsa (Discover/Mesajlar listesi) ekstra bir
-        // network isteği atmaya gerek yok — effectiveReveal zaten onu kullanıyor.
+        // Prefetch zaten taze bir kayıt bırakmışsa (Discover/Mesajlar listesi)
+        // ekstra bir network isteği atmaya gerek yok — effectiveReveal zaten onu
+        // kullanıyor. Kayıt varsa ama süresi (signed URL TTL'i) geçmişse burada
+        // da yeniliyoruz, yoksa süresi dolmuş bir URL sonsuza kadar önbellekte kalırdı.
         // forceRefresh sadece reveal onayından hemen sonra kullanılıyor, çünkü o
         // an itibariyle önbellekteki eski (henüz onaylanmamış) değer artık geçersiz.
-        if !forceRefresh, social.photoRevealCache[userId] != nil { return }
+        if !forceRefresh, social.isPhotoRevealFresh(for: userId) { return }
         let result = await social.fetchProfilePhoto(targetUserId: userId)
         reveal = result
-        social.photoRevealCache[userId] = result
+        social.cachePhotoReveal(result, for: userId)
     }
 
     // Görsel byte'larını path'e göre önbellekten okur; yoksa signed URL'den bir kez
