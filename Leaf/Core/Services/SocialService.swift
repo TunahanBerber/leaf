@@ -929,18 +929,50 @@ final class SocialService {
             filter: "receiver_id=eq.\(userId)"
         )
 
-        let deletedRequests = channel.postgresChange(
+        // Postgres Realtime filtreleri tek kolonluk eq karşılaştırması — "sender_id
+        // OR receiver_id" gibi bir şey tek filtrede yazılamıyor, o yüzden iki ayrı
+        // filtrelenmiş abonelik açıp ikisini de aynı mantığa bağlıyoruz. Bu filtrenin
+        // gerçekten işlemesi için conversation_requests'e REPLICA IDENTITY FULL
+        // verildi (yoksa DELETE event'inde sadece id gelir, sender_id/receiver_id
+        // gelmez — filtre hiç eşleşmezdi).
+        let deletedRequestsAsSender = channel.postgresChange(
             DeleteAction.self,
             schema: "public",
-            table: "conversation_requests"
+            table: "conversation_requests",
+            filter: "sender_id=eq.\(userId)"
+        )
+        let deletedRequestsAsReceiver = channel.postgresChange(
+            DeleteAction.self,
+            schema: "public",
+            table: "conversation_requests",
+            filter: "receiver_id=eq.\(userId)"
         )
 
-        let newConversations = channel.postgresChange(
+        // Aynı sebeple: conversations'ta ben ya user_a_id ya da user_b_id olabilirim
+        // (record_swipe/accept akışı least/greatest ile atıyor), tek filtre ikisini
+        // birden kapsayamıyor. Bu abonelik daha önce hiç event almıyordu çünkü
+        // conversations tablosu supabase_realtime publication'ına dahil değildi —
+        // o da bu değişiklikle birlikte eklendi.
+        let newConversationsAsUserA = channel.postgresChange(
             InsertAction.self,
             schema: "public",
-            table: "conversations"
+            table: "conversations",
+            filter: "user_a_id=eq.\(userId)"
+        )
+        let newConversationsAsUserB = channel.postgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "conversations",
+            filter: "user_b_id=eq.\(userId)"
         )
 
+        // messages'ta "bu satır beni ilgilendiriyor mu" tek bir eq filtresiyle ifade
+        // edilemiyor (ne sender_id=eq.userId ne de başka bir kolon yeterli — mesajı
+        // BAŞKASI gönderdiğinde haberdar olmam lazım). Bu yüzden filtresiz kalıyor;
+        // güvenlik açığı değil çünkü messages_select RLS policy'si zaten sadece
+        // kendi sohbetlerimin satırlarını görebilmemi sağlıyor ve Supabase Realtime
+        // bu RLS'i sunucu tarafında uyguluyor — filtre burada sadece bir verimlilik
+        // optimizasyonu olurdu, tek güvenlik sınırı RLS'in kendisi.
         let newMessages = channel.postgresChange(
             InsertAction.self,
             schema: "public",
@@ -958,7 +990,14 @@ final class SocialService {
         }
 
         Task { [weak self] in
-            for await _ in deletedRequests {
+            for await _ in deletedRequestsAsSender {
+                guard let self else { break }
+                await self.fetchPendingRequests()
+                await self.fetchSentRequests()
+            }
+        }
+        Task { [weak self] in
+            for await _ in deletedRequestsAsReceiver {
                 guard let self else { break }
                 await self.fetchPendingRequests()
                 await self.fetchSentRequests()
@@ -966,7 +1005,13 @@ final class SocialService {
         }
 
         Task { [weak self] in
-            for await _ in newConversations {
+            for await _ in newConversationsAsUserA {
+                guard let self else { break }
+                await self.fetchConversations()
+            }
+        }
+        Task { [weak self] in
+            for await _ in newConversationsAsUserB {
                 guard let self else { break }
                 await self.fetchConversations()
             }
