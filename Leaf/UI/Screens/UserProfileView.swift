@@ -98,14 +98,7 @@ struct UserProfileView: View {
 
     private var profileHeader: some View {
         VStack(spacing: LeafSpacing.md) {
-            Circle()
-                .fill(LeafColors.accent(for: colorScheme).opacity(0.15))
-                .frame(width: 96, height: 96)
-                .overlay {
-                    Text(profile.username.prefix(1).uppercased())
-                        .font(.system(size: 40, weight: .bold))
-                        .foregroundStyle(LeafColors.accent(for: colorScheme))
-                }
+            RevealablePhotoView(userId: profile.id, conversationId: existingConvId, size: 96)
 
             VStack(spacing: LeafSpacing.xxs) {
                 HStack(spacing: LeafSpacing.xs) {

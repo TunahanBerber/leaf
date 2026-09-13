@@ -55,8 +55,12 @@ struct DiscoverView: View {
                 }
             }
             .task {
-                await socialService.discoverUsers()
-                await socialService.fetchSentRequests()
+                // discoverUsers()/fetchSentRequests() artık listeyi ekrana yansıtmadan
+                // önce ilgili fotoğrafları kendi içinde önbelleğe alıyor (SocialService),
+                // burada ayrıca bir şey yapmaya gerek yok.
+                async let discover: () = socialService.discoverUsers()
+                async let sent: () = socialService.fetchSentRequests()
+                _ = await (discover, sent)
             }
             .navigationDestination(item: $navigateToProfile) { profile in
                 UserProfileView(profile: profile)
@@ -323,14 +327,7 @@ struct SentRequestRow: View {
 
     var body: some View {
         HStack(spacing: LeafSpacing.md) {
-            Circle()
-                .fill(LeafColors.accent(for: colorScheme).opacity(0.15))
-                .frame(width: 48, height: 48)
-                .overlay {
-                    Text(displayName.prefix(1).uppercased())
-                        .font(.headline.bold())
-                        .foregroundStyle(LeafColors.accent(for: colorScheme))
-                }
+            RevealablePhotoView(userId: request.receiverId, size: 48)
 
             VStack(alignment: .leading, spacing: LeafSpacing.xxs) {
                 Text(displayName)

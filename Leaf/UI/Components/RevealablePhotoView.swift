@@ -15,13 +15,22 @@ struct RevealablePhotoView: View {
     @State private var hasConfirmed = false
     @State private var showDetail = false
 
+    // Paylaşılan önbellekte bu kullanıcı için bir kayıt varsa (Discover/Mesajlar
+    // listesi toplu çekmişse) onu anında kullanıyoruz — kendi tekil fetch'imizin
+    // bitmesini beklemeye gerek kalmıyor, "önce avatar sonra fotoğraf" gecikmesi
+    // burada ortadan kalkıyor. social.photoRevealCache güncellenince (prefetch
+    // tamamlanınca) bu view otomatik yeniden çizilir çünkü @Published okunuyor.
+    private var effectiveReveal: PhotoReveal {
+        social.photoRevealCache[userId] ?? reveal
+    }
+
     private var hasVisibleImage: Bool {
-        reveal.url != nil && (reveal.stage == .blurred || reveal.stage == .revealed)
+        effectiveReveal.url != nil && (effectiveReveal.stage == .blurred || effectiveReveal.stage == .revealed)
     }
 
     var body: some View {
         ZStack {
-            if hasVisibleImage, let url = reveal.url {
+            if hasVisibleImage, let url = effectiveReveal.url {
                 AsyncImage(url: url) { phase in
                     if let image = phase.image {
                         image.resizable().aspectRatio(contentMode: .fill)
@@ -45,8 +54,8 @@ struct RevealablePhotoView: View {
         .task(id: "\(userId)-\(conversationId ?? "")") { await load() }
         .fullScreenCover(isPresented: $showDetail) {
             PhotoDetailView(
-                url: reveal.url,
-                stage: reveal.stage,
+                url: effectiveReveal.url,
+                stage: effectiveReveal.stage,
                 canRequestReveal: conversationId != nil,
                 hasConfirmed: hasConfirmed,
                 onRequestReveal: {
@@ -54,7 +63,7 @@ struct RevealablePhotoView: View {
                     Task {
                         _ = await social.confirmPhotoReveal(conversationId: conversationId)
                         hasConfirmed = true
-                        await load()
+                        await load(forceRefresh: true)
                     }
                 }
             )
@@ -71,8 +80,15 @@ struct RevealablePhotoView: View {
             }
     }
 
-    private func load() async {
-        reveal = await social.fetchProfilePhoto(targetUserId: userId)
+    private func load(forceRefresh: Bool = false) async {
+        // Prefetch zaten doldurmuşsa (Discover/Mesajlar listesi) ekstra bir
+        // network isteği atmaya gerek yok — effectiveReveal zaten onu kullanıyor.
+        // forceRefresh sadece reveal onayından hemen sonra kullanılıyor, çünkü o
+        // an itibariyle önbellekteki eski (henüz onaylanmamış) değer artık geçersiz.
+        if !forceRefresh, social.photoRevealCache[userId] != nil { return }
+        let result = await social.fetchProfilePhoto(targetUserId: userId)
+        reveal = result
+        social.photoRevealCache[userId] = result
     }
 }
 

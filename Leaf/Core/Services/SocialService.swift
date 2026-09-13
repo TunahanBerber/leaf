@@ -61,6 +61,12 @@ final class SocialService: ObservableObject {
     // Kendi profil fotoğrafımın durumu — Kitaplığım'daki avatar butonu gibi birden
     // fazla ekranın aynı anda güncel kalması gereken tek paylaşılan kaynağı bu.
     @Published var myPhotoReveal: PhotoReveal?
+    // Başkalarının fotoğraf durumu için paylaşılan önbellek — Discover kartları ve
+    // Mesajlar listesi gibi yerlerde her avatarın kendi başına ayrı bir network
+    // isteği atıp "önce avatar, sonra fotoğraf" gecikmesi yaratmasını önlüyor.
+    // prefetchPhotoReveals(for:) ile toplu doldurulur, RevealablePhotoView önce
+    // buradan okur.
+    @Published var photoRevealCache: [String: PhotoReveal] = [:]
     @Published var discoveredUsers: [UserProfile] = []
     @Published var conversations: [Conversation] = []
     @Published var pendingRequests: [ConversationRequest] = []  // gelen bekleyen istekler
@@ -251,6 +257,29 @@ final class SocialService: ObservableObject {
         myPhotoReveal = await fetchProfilePhoto(targetUserId: userId)
     }
 
+    // Discover kartları / Mesajlar listesi gibi bir seferde birden çok kullanıcının
+    // fotoğrafı gösterileceği yerlerde, listenin kendisi yüklenir yüklenmez tek bir
+    // toplu istekle hepsinin durumunu çekip önbelleğe yazar. get-profile-photos
+    // Edge Function'ı tek bir SQL RPC'siyle stage'leri, tek bir Storage batch
+    // çağrısıyla da signed URL'leri hesaplıyor — N ayrı istek yerine 1 istek.
+    func prefetchPhotoReveals(for userIds: [String]) async {
+        let ids = Array(Set(userIds)).filter { !$0.isEmpty }
+        guard !ids.isEmpty else { return }
+
+        struct BatchResponse: Codable {
+            var results: [String: PhotoReveal]
+        }
+        do {
+            let response: BatchResponse = try await supabase.functions.invoke(
+                "get-profile-photos",
+                options: FunctionInvokeOptions(body: ["target_user_ids": ids])
+            )
+            photoRevealCache.merge(response.results) { _, new in new }
+        } catch {
+            print("[SocialService] prefetchPhotoReveals error: \(error)")
+        }
+    }
+
     private static func resizedAndCompressed(_ data: Data, maxDimension: CGFloat = 800) -> Data {
         guard let image = UIImage(data: data) else { return data }
 
@@ -348,12 +377,16 @@ final class SocialService: ObservableObject {
                 .value
 
             // birbirini engellemiş kullanıcılar keşifte görünmesin
+            var filtered = users
             if let userId = try? await supabase.auth.session.user.id.uuidString.lowercased() {
                 let blocked = await blockedPairIds(currentId: userId)
-                discoveredUsers = users.filter { !blocked.contains($0.id) }
-            } else {
-                discoveredUsers = users
+                filtered = users.filter { !blocked.contains($0.id) }
             }
+
+            // Fotoğraf durumlarını liste ekrana yansımadan ÖNCE önbelleğe alıyoruz —
+            // yoksa kartlar önce boş avatarla render olup fotoğraf sonradan "patlıyor".
+            await prefetchPhotoReveals(for: filtered.map(\.id))
+            discoveredUsers = filtered
         } catch {
             self.error = "Kullanıcılar yüklenemedi."
             print("[SocialService] discoverUsers error: \(error)")
@@ -427,6 +460,7 @@ final class SocialService: ObservableObject {
                 }
             }
 
+            await prefetchPhotoReveals(for: senderIds)
             pendingRequests = requests
         } catch {
             self.error = "İstekler yüklenemedi."
@@ -513,6 +547,7 @@ final class SocialService: ObservableObject {
                 }
             }
 
+            await prefetchPhotoReveals(for: receiverIds)
             sentRequests = requests
         } catch {
             self.error = "Gönderilen istekler yüklenemedi."
@@ -600,6 +635,9 @@ final class SocialService: ObservableObject {
                 }
             }
 
+            // Liste ekrana yansımadan ÖNCE fotoğrafları önbelleğe alıyoruz — yoksa
+            // satırlar önce boş avatarla render olup fotoğraf sonradan "patlıyor".
+            await prefetchPhotoReveals(for: otherIds)
             conversations = convs
             await refreshUnreadCount()
         } catch {

@@ -29,8 +29,12 @@ struct InboxView: View {
             .navigationTitle("Mesajlar")
             .navigationBarTitleDisplayMode(.large)
             .task {
-                await socialService.fetchPendingRequests()
-                await socialService.fetchConversations()
+                // fetchPendingRequests()/fetchConversations() artık listeyi ekrana
+                // yansıtmadan önce ilgili fotoğrafları kendi içinde önbelleğe alıyor
+                // (SocialService), burada ayrıca bir şey yapmaya gerek yok.
+                async let pending: () = socialService.fetchPendingRequests()
+                async let convs: () = socialService.fetchConversations()
+                _ = await (pending, convs)
                 await socialService.subscribeToInbox()
             }
             .onDisappear {
@@ -171,15 +175,7 @@ struct RequestRow: View {
 
     var body: some View {
         HStack(spacing: LeafSpacing.md) {
-            // Avatar
-            Circle()
-                .fill(LeafColors.accent(for: colorScheme).opacity(0.15))
-                .frame(width: 48, height: 48)
-                .overlay {
-                    Text(displayName.prefix(1).uppercased())
-                        .font(.headline.bold())
-                        .foregroundStyle(LeafColors.accent(for: colorScheme))
-                }
+            RevealablePhotoView(userId: request.senderId, size: 48)
 
             VStack(alignment: .leading, spacing: LeafSpacing.xxs) {
                 Text(displayName)
