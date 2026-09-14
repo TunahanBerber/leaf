@@ -129,9 +129,16 @@ struct ConversationView: View {
             // temizlemezsek bir önceki sohbetin mesajları bu satır çalışana kadar
             // (spinner arkasında olsa bile) belleğimizde kalır.
             socialService.messages = []
+            // Realtime aboneliği fetch'ten ÖNCE açılıyor: aksi halde fetch ile
+            // subscribe arasındaki pencerede karşı tarafın attığı bir mesaj ne
+            // ilk fetch'e yakalanır ne de henüz açılmamış kanaldan gelirdi — sohbete
+            // girip manuel yenilemeden görünmezdi. subscribeToMessages'daki insert
+            // handler'ı zaten "messages içinde bu id zaten var mı" kontrolü yapıyor
+            // (SocialService.swift), o yüzden fetch ile realtime'ın aynı mesajı iki
+            // kez getirmesi durumunda çakışma güvenle önleniyor.
+            await socialService.subscribeToMessages(conversationId: conversationId)
             await socialService.fetchMessages(conversationId: conversationId)
             isLoadingMessages = false
-            await socialService.subscribeToMessages(conversationId: conversationId)
             PushNotificationService.shared.clearBadge()
         }
         .onDisappear {
