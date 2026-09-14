@@ -6,6 +6,49 @@ import Observation
 import Supabase
 import UIKit
 
+// Sohbet mesajlarının diske yazılan önbelleği — ProfilePhotoCacheStore'daki
+// (RevealablePhotoView.swift) aynı mantık: SocialService.messagesCache sadece
+// bellekte olduğu için uygulama kapanıp açıldığında sıfırlanıyordu, bu yüzden
+// daha önce görülmüş bir sohbete girmek bile ilk açılışmış gibi spinner
+// gösteriyordu. Burada conversationId başına bir JSON dosyası tutup process
+// yeniden başlasa da anında gösterecek bir veri bulunmasını sağlıyoruz.
+final class MessageCacheStore: @unchecked Sendable {
+    static let shared = MessageCacheStore()
+
+    private let diskDir: URL
+    private let ioQueue = DispatchQueue(label: "leaf.message-disk-cache", qos: .utility)
+
+    private init() {
+        let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+        diskDir = caches.appendingPathComponent("messages", isDirectory: true)
+        try? FileManager.default.createDirectory(at: diskDir, withIntermediateDirectories: true)
+    }
+
+    private func path(for conversationId: String) -> URL {
+        diskDir.appendingPathComponent("\(conversationId).json")
+    }
+
+    func get(_ conversationId: String) -> [Message]? {
+        guard let data = try? Data(contentsOf: path(for: conversationId)) else { return nil }
+        return try? JSONDecoder().decode([Message].self, from: data)
+    }
+
+    func set(_ conversationId: String, messages: [Message]) {
+        let destination = path(for: conversationId)
+        ioQueue.async {
+            guard let data = try? JSONEncoder().encode(messages) else { return }
+            try? data.write(to: destination)
+        }
+    }
+
+    func clear(_ conversationId: String) {
+        let destination = path(for: conversationId)
+        ioQueue.async {
+            try? FileManager.default.removeItem(at: destination)
+        }
+    }
+}
+
 // Supabase'den gelen profil kaydı (id string olarak geliyor)
 private struct ProfileRecord: Codable {
     var id: String
@@ -86,6 +129,12 @@ final class SocialService {
     var pendingRequests: [ConversationRequest] = []  // gelen bekleyen istekler
     var sentRequests: [ConversationRequest] = []     // benim gönderdiğim, henüz yanıtlanmamış istekler
     var messages: [Message] = []
+    // Sohbet başına son bilinen mesaj listesi — WhatsApp'takine benzer şekilde,
+    // daha önce açılmış bir sohbete tekrar girildiğinde spinner beklemeden
+    // ekranda önce bunu gösterip arka planda sessizce tazeliyoruz. messages'a
+    // yazan her yer (fetch/gönder/sil/realtime) updateMessagesCache üzerinden
+    // burayı da (ve MessageCacheStore ile diski de) güncel tutmalı.
+    private var messagesCache: [String: [Message]] = [:]
     var blockedUsers: [UserProfile] = []
     var isLoading = false
     var error: String?
@@ -659,21 +708,18 @@ final class SocialService {
                 }
             }
 
-            // Her sohbetin son mesajını çek
+            // Her sohbetin son mesajını çek — eskiden TÜM sohbetlerin TÜM mesaj
+            // geçmişini çekip client'ta son mesajı seçiyorduk (mesaj sayısı arttıkça
+            // ölçeklenmiyordu). last_messages_for_conversations RPC'si Postgres
+            // tarafında DISTINCT ON ile doğrudan sadece son mesajları döndürüyor.
             let convIds = convs.map(\.id)
             if !convIds.isEmpty {
-                let allMessages: [Message] = (try? await supabase
-                    .from("messages")
-                    .select()
-                    .in("conversation_id", values: convIds)
-                    .order("created_at", ascending: false)
+                let lastMessages: [Message] = (try? await supabase
+                    .rpc("last_messages_for_conversations", params: ["p_conversation_ids": convIds])
                     .execute()
                     .value) ?? []
 
-                var lastMessageMap: [String: Message] = [:]
-                for msg in allMessages where lastMessageMap[msg.conversationId] == nil {
-                    lastMessageMap[msg.conversationId] = msg
-                }
+                let lastMessageMap = Dictionary(uniqueKeysWithValues: lastMessages.map { ($0.conversationId, $0) })
                 for i in convs.indices {
                     convs[i].lastMessage = lastMessageMap[convs[i].id]
                 }
@@ -753,25 +799,99 @@ final class SocialService {
 
     // MARK: - Mesajlar
 
+    // Sohbet başına: son fetch/loadOlder sayfasının tam mı geldiği (henüz daha
+    // eskisi var mı) — sentinel satır bunu okuyup daha fazla göstermeyi bırakıyor.
+    private var hasMoreOlderMessages: [String: Bool] = [:]
+    private let messagesPageSize = 30
+
+    func hasMoreMessages(for conversationId: String) -> Bool {
+        hasMoreOlderMessages[conversationId] ?? true
+    }
+
     func fetchMessages(conversationId: String) async {
         isLoading = true
         defer { isLoading = false }
 
         do {
-            let msgs: [Message] = try await supabase
+            // Sohbetin TÜM geçmişini değil, WhatsApp/Telegram'daki gibi sadece
+            // son messagesPageSize mesajı çekiyoruz — geçmiş ne kadar büyürse
+            // büyüsün her açılışın maliyeti sabit kalıyor. Daha eskisi yukarı
+            // kaydırınca loadOlderMessages ile cursor-based (created_at'e göre)
+            // sayfalanarak geliyor.
+            let page: [Message] = try await supabase
                 .from("messages")
                 .select()
                 .eq("conversation_id", value: conversationId)
-                .order("created_at", ascending: true)
+                .order("created_at", ascending: false)
+                .limit(messagesPageSize)
                 .execute()
                 .value
 
-            messages = msgs
+            let freshPage = Array(page.reversed())
+
+            // Cache'den zaten daha eski mesajlar gösteriliyor olabilir (kullanıcı
+            // önceki ziyarette yukarı kaydırmış olabilir) — bu arka plan
+            // tazelemesi onları silip atmasın diye, taze sayfanın başladığı yeri
+            // mevcut messages içinde bulup öncesini koruyoruz.
+            if let firstFreshId = freshPage.first?.id,
+               let splitIndex = messages.firstIndex(where: { $0.id == firstFreshId }) {
+                messages = Array(messages[..<splitIndex]) + freshPage
+            } else {
+                messages = freshPage
+                hasMoreOlderMessages[conversationId] = page.count == messagesPageSize
+            }
+
+            updateMessagesCache(conversationId, messages)
             await markAsRead(conversationId: conversationId)
             await refreshUnreadCount()
         } catch {
             self.error = "Mesajlar yüklenemedi."
         }
+    }
+
+    // ConversationView, mesaj listesinin en üstüne yaklaşınca çağırıyor.
+    // Elimizdeki en eski mesajın tarihinden geriye doğru bir sayfa daha çekip
+    // başa ekliyoruz.
+    func loadOlderMessages(conversationId: String) async {
+        guard hasMoreOlderMessages[conversationId] != false else { return }
+        guard let oldest = messages.first?.createdAt else { return }
+
+        do {
+            let page: [Message] = try await supabase
+                .from("messages")
+                .select()
+                .eq("conversation_id", value: conversationId)
+                .lt("created_at", value: oldest)
+                .order("created_at", ascending: false)
+                .limit(messagesPageSize)
+                .execute()
+                .value
+
+            hasMoreOlderMessages[conversationId] = page.count == messagesPageSize
+            guard !page.isEmpty else { return }
+
+            messages = Array(page.reversed()) + messages
+            updateMessagesCache(conversationId, messages)
+        } catch {
+            self.error = "Eski mesajlar yüklenemedi."
+        }
+    }
+
+    // ConversationView, bir sohbeti daha önce açtıysak spinner göstermeden
+    // önce bunu ekrana basıyor — fetchMessages arka planda tazeliyor. Bellekte
+    // yoksa (uygulama yeniden başlamış olabilir) diskteki önbelleğe bakıyoruz.
+    func cachedMessages(for conversationId: String) -> [Message]? {
+        if let inMemory = messagesCache[conversationId] { return inMemory }
+        guard let fromDisk = MessageCacheStore.shared.get(conversationId) else { return nil }
+        messagesCache[conversationId] = fromDisk
+        return fromDisk
+    }
+
+    // messages'a yazan HER yer (fetch/gönder/sil/realtime) buradan geçmeli —
+    // bellek ve disk önbelleğini tek yerden birlikte güncel tutuyoruz.
+    private func updateMessagesCache(_ conversationId: String, _ msgs: [Message]) {
+        messagesCache[conversationId] = msgs
+        MessageCacheStore.shared.set(conversationId, messages: msgs)
     }
 
     func sendMessage(conversationId: String, content: String) async {
@@ -793,6 +913,7 @@ final class SocialService {
                 .value
 
             messages.append(sent)
+            updateMessagesCache(conversationId, messages)
         } catch {
             self.error = "Mesaj gönderilemedi."
         }
@@ -807,6 +928,9 @@ final class SocialService {
                 .execute()
 
             conversations.removeAll { $0.id == conversation.id }
+            messagesCache[conversation.id] = nil
+            hasMoreOlderMessages[conversation.id] = nil
+            MessageCacheStore.shared.clear(conversation.id)
         } catch {
             self.error = "Sohbet silinemedi."
         }
@@ -824,6 +948,7 @@ final class SocialService {
                 .execute()
 
             messages.removeAll { $0.id == message.id }
+            updateMessagesCache(message.conversationId, messages)
         } catch {
             self.error = "Mesaj silinemedi."
         }
@@ -894,6 +1019,7 @@ final class SocialService {
                 await MainActor.run {
                     guard !(self.messages.contains { $0.id == msg.id }) else { return }
                     self.messages.append(msg)
+                    self.updateMessagesCache(convId, self.messages)
                 }
             }
         }
@@ -904,6 +1030,7 @@ final class SocialService {
                 guard let id = deletion.oldRecord["id"]?.stringValue else { continue }
                 await MainActor.run {
                     self.messages.removeAll { $0.id == id }
+                    self.updateMessagesCache(conversationId, self.messages)
                 }
             }
         }
