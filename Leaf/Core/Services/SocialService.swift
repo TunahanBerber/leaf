@@ -458,16 +458,26 @@ final class SocialService {
 
     // MARK: - Keşif
 
-    func discoverUsers() async {
+    // discover_users RPC'si zaten city_filter parametresi alıyor (Supabase
+    // tarafında mevcut) — cityFilter verilmezse eskisi gibi filtresiz çalışır.
+    func discoverUsers(cityFilter: String? = nil) async {
         isLoading = true
         error = nil
         defer { isLoading = false }
 
         do {
-            let users: [UserProfile] = try await supabase
-                .rpc("discover_users")
-                .execute()
-                .value
+            let users: [UserProfile]
+            if let cityFilter {
+                users = try await supabase
+                    .rpc("discover_users", params: ["city_filter": AnyJSON.string(cityFilter)])
+                    .execute()
+                    .value
+            } else {
+                users = try await supabase
+                    .rpc("discover_users")
+                    .execute()
+                    .value
+            }
 
             // birbirini engellemiş kullanıcılar keşifte görünmesin
             var filtered = users
