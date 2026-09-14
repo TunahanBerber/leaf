@@ -13,8 +13,15 @@ struct AddNoteView: View {
 
     @State private var title = ""
     @State private var content = ""
-    @State private var pageNum = ""
+    @State private var hasPageNumber = false
+    @State private var pageNum = 1
     @State private var isSaving = false
+
+    // Sayfa aralığını sınırlamak için kitabın toplam sayfa sayısını okuyorum —
+    // yoksa slider'ın üst sınırını belirleyecek bir referans olmazdı.
+    private var book: Book? {
+        store.books.first { $0.id == bookId }
+    }
 
     var body: some View {
         NavigationStack {
@@ -22,8 +29,33 @@ struct AddNoteView: View {
                 LeafGradientBackground()
                 ScrollView {
                     VStack(spacing: LeafSpacing.md) {
-                        LeafTextField(title: "Not Başlığı",     text: $title,   placeholder: "Notunuza bir başlık verin")
-                        LeafTextField(title: "Sayfa Numarası",  text: $pageNum, placeholder: "İsteğe bağlı", keyboard: .numberPad)
+                        LeafTextField(title: "Not Başlığı", text: $title, placeholder: "Notunuza bir başlık verin")
+
+                        // Sayfa numarasını elle yazmak yerine kaydırarak seçiyoruz —
+                        // toplam sayfa sayısı bilinmiyorsa (0) bu seçeneği hiç göstermiyoruz,
+                        // aksi halde slider'ın anlamlı bir üst sınırı olmazdı.
+                        if let book, book.totalPages > 0 {
+                            VStack(alignment: .leading, spacing: LeafSpacing.sm) {
+                                Toggle("Sayfa numarası ekle", isOn: $hasPageNumber.animation(LeafMotion.regular))
+                                    .tint(LeafColors.accent(for: scheme))
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundStyle(LeafColors.textSecondary(for: scheme))
+
+                                if hasPageNumber {
+                                    PageProgressSlider(page: $pageNum, totalPages: book.totalPages)
+                                        .padding(LeafSpacing.md)
+                                        .background {
+                                            RoundedRectangle(cornerRadius: LeafRadius.medium, style: .continuous)
+                                                .fill(LeafColors.surfacePrimary(for: scheme))
+                                        }
+                                        .overlay {
+                                            RoundedRectangle(cornerRadius: LeafRadius.medium, style: .continuous)
+                                                .strokeBorder(LeafColors.borderSubtle(for: scheme), lineWidth: 0.5)
+                                        }
+                                        .transition(.opacity.combined(with: .move(edge: .top)))
+                                }
+                            }
+                        }
 
                         // içerik alanı
                         VStack(alignment: .leading, spacing: LeafSpacing.xs) {
@@ -92,7 +124,7 @@ struct AddNoteView: View {
         await store.addNote(
             title: title,
             content: content,
-            pageNumber: Int(pageNum),
+            pageNumber: hasPageNumber ? pageNum : nil,
             to: bookId
         )
         dismiss()
