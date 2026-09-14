@@ -124,11 +124,17 @@ struct ConversationView: View {
             Text(filterWarning ?? "")
         }
         .task(id: conversationId) {
-            isLoadingMessages = true
-            // socialService.messages sohbetler arasında paylaşılan tek bir dizi —
-            // temizlemezsek bir önceki sohbetin mesajları bu satır çalışana kadar
-            // (spinner arkasında olsa bile) belleğimizde kalır.
-            socialService.messages = []
+            // Bu sohbeti daha önce açtıysak (messagesCache) spinner beklemeden
+            // elimizdeki son veriyi hemen gösteriyoruz — WhatsApp'ta olduğu gibi
+            // girip çıkışlar anında oluyor, fetchMessages arkada sessizce tazeliyor.
+            // Hiç açmadıysak (cache yok) eskisi gibi spinner gösteriyoruz.
+            if let cached = socialService.cachedMessages(for: conversationId) {
+                socialService.messages = cached
+                isLoadingMessages = false
+            } else {
+                isLoadingMessages = true
+                socialService.messages = []
+            }
             // Realtime aboneliği fetch'ten ÖNCE açılıyor: aksi halde fetch ile
             // subscribe arasındaki pencerede karşı tarafın attığı bir mesaj ne
             // ilk fetch'e yakalanır ne de henüz açılmamış kanaldan gelirdi — sohbete
@@ -144,7 +150,20 @@ struct ConversationView: View {
         .onDisappear {
             Task {
                 await socialService.unsubscribe()
-                await socialService.fetchConversations()
+                if let idx = socialService.conversations.firstIndex(where: { $0.id == conversationId }) {
+                    // Sohbet zaten inbox listesinde — tüm listeyi (ve her
+                    // sohbetin profilini/son mesajını) ağır bir şekilde yeniden
+                    // çekmek yerine sadece bu sohbetin önizlemesini local'de
+                    // güncelliyoruz. InboxView bu yüzden artık girip çıkışta
+                    // spinner'a dönüp listeyi baştan çizmiyor.
+                    socialService.conversations[idx].lastMessage = socialService.messages.last
+                    await socialService.refreshUnreadCount()
+                } else {
+                    // Az önce kabul edilen bir istekten gelinmiş olabilir —
+                    // sohbet henüz local listede yok, bu durumda tam yenileme
+                    // gerekiyor (nadir, sadece ilk kez girilen sohbetlerde).
+                    await socialService.fetchConversations()
+                }
             }
         }
     }
