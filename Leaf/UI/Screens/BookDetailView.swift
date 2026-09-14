@@ -15,7 +15,6 @@ struct BookDetailView: View {
     @State private var showEditBook = false
     @State private var showDeleteConfirmation = false
     @State private var showEditPage = false
-    @State private var pageText = ""
 
     // store'dan güncel kitabı bul
     private var book: Book? {
@@ -93,17 +92,12 @@ struct BookDetailView: View {
                 }
             }
         }
-        .alert("Sayfa Güncelle", isPresented: $showEditPage) {
-            TextField("Mevcut sayfa", text: $pageText).keyboardType(.numberPad)
-            Button("Güncelle") {
-                guard let p = Int(pageText) else { return }
+        .sheet(isPresented: $showEditPage) {
+            PageProgressSheet(book: book) { newPage in
                 var updated = book
-                updated.currentPage = min(p, book.totalPages)
+                updated.currentPage = min(newPage, book.totalPages)
                 Task { await store.updateBook(updated) }
             }
-            Button("İptal", role: .cancel) {}
-        } message: {
-            Text("Şu an kaçıncı sayfadasınız?")
         }
     }
 
@@ -157,26 +151,25 @@ struct BookDetailView: View {
                 if book.totalPages > 0 {
                     ProgressView(value: book.progress)
                         .tint(LeafColors.accent(for: scheme))
-                }
 
-                Button {
-                    pageText = "\(book.currentPage)"
-                    showEditPage = true
-                } label: {
-                    HStack(spacing: LeafSpacing.xs) {
-                        Image(systemName: "bookmark").font(.system(size: 14))
-                        Text("Sayfa \(book.currentPage) / \(book.totalPages)")
-                            .font(.system(size: 13))
+                    Button {
+                        showEditPage = true
+                    } label: {
+                        HStack(spacing: LeafSpacing.xs) {
+                            Image(systemName: "bookmark").font(.system(size: 14))
+                            Text("Sayfa \(book.currentPage) / \(book.totalPages)")
+                                .font(.system(size: 13))
+                        }
+                        .foregroundStyle(LeafColors.accent(for: scheme))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, LeafSpacing.xs)
+                        .background {
+                            RoundedRectangle(cornerRadius: LeafRadius.small, style: .continuous)
+                                .fill(LeafColors.accent(for: scheme).opacity(0.1))
+                        }
                     }
-                    .foregroundStyle(LeafColors.accent(for: scheme))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, LeafSpacing.xs)
-                    .background {
-                        RoundedRectangle(cornerRadius: LeafRadius.small, style: .continuous)
-                            .fill(LeafColors.accent(for: scheme).opacity(0.1))
-                    }
+                    .buttonStyle(PressStyle())
                 }
-                .buttonStyle(PressStyle())
             }
             .padding(LeafSpacing.md)
         }
@@ -256,5 +249,53 @@ struct NoteCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(LeafSpacing.md)
         }
+    }
+}
+
+// MARK: - Sayfa Güncelleme Sheet'i
+
+// Eskiden sayfa numarasını klavyeyle elle yazan bir alert vardı — kaydırarak
+// seçmenin daha "hareketli" hissettirdiği PageProgressSlider'a taşındı.
+struct PageProgressSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let book: Book
+    let onSave: (Int) -> Void
+
+    @State private var page: Int
+
+    init(book: Book, onSave: @escaping (Int) -> Void) {
+        self.book = book
+        self.onSave = onSave
+        _page = State(initialValue: book.currentPage)
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                LeafGradientBackground()
+                VStack {
+                    PageProgressSlider(page: $page, totalPages: book.totalPages)
+                    Spacer()
+                }
+                .padding(LeafSpacing.lg)
+                .padding(.top, LeafSpacing.xl)
+            }
+            .navigationTitle("Sayfa Güncelle")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("İptal") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Kaydet") {
+                        onSave(page)
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+        }
+        .presentationDetents([.height(280)])
+        .presentationDragIndicator(.visible)
     }
 }
