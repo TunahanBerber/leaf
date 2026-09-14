@@ -15,12 +15,19 @@ struct InboxView: View {
                 LeafGradientBackground()
 
                 Group {
-                    if socialService.isLoading {
-                        ProgressView()
-                            .tint(LeafColors.accent(for: colorScheme))
-                    } else if socialService.pendingRequests.isEmpty
-                        && socialService.conversations.isEmpty {
-                        emptyState
+                    // isLoading, sohbetten geri dönüşte tetiklenen hafif arka plan
+                    // yenilemelerinde de true oluyor — elde zaten veri varken bunu
+                    // spinner için kullanırsak liste her seferinde silinip baştan
+                    // çizilirdi (WhatsApp'ta böyle olmuyor). Spinner'ı sadece hiç
+                    // veri yokken (ilk açılış) gösteriyoruz, aksi halde arka planda
+                    // sessizce tazelenirken liste yerinde kalıyor.
+                    if socialService.pendingRequests.isEmpty && socialService.conversations.isEmpty {
+                        if socialService.isLoading {
+                            ProgressView()
+                                .tint(LeafColors.accent(for: colorScheme))
+                        } else {
+                            emptyState
+                        }
                     } else {
                         contentList
                     }
