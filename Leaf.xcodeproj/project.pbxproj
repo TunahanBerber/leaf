@@ -33,6 +33,7 @@
 		7E7D5C073CAB76AB3B2F94C8 /* UserProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F381B42281C77F096D06D912 /* UserProfileView.swift */; };
 		80623FE84BDF07A07D3FF278 /* BookSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE5A5F17A5741835E42F3928 /* BookSearchView.swift */; };
 		8F65624276FFCF4E2ACB8ACD /* NetworkHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 085D396B5556D97DF6B1F83E /* NetworkHelper.swift */; };
+		91410947DBF147E10E24EE44 /* karaliste.txt in Resources */ = {isa = PBXBuildFile; fileRef = 497512C08A4FC97BDDAAF1CA /* karaliste.txt */; };
 		91A9C7E442AB4BA7C9170FD4 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2A654C4362EDCB2A4403423 /* ContentView.swift */; };
 		9D40A3537C5631E0DCB78902 /* BookStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED6E106B22E444D42C6AFC0A /* BookStore.swift */; };
 		9D5C33F869A3EA1D1EE99AE6 /* RevealablePhotoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EA517B139D86EF10EC8B5ED /* RevealablePhotoView.swift */; };
@@ -76,6 +77,7 @@
 		31ADFC20A32BB6BB08E51CC7 /* SearchQualityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchQualityTests.swift; sourceTree = "<group>"; };
 		40AF0594D1EDCDA0EFCD2BF4 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
 		4152A273FD81613992DF338A /* EmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyStateView.swift; sourceTree = "<group>"; };
+		497512C08A4FC97BDDAAF1CA /* karaliste.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = karaliste.txt; sourceTree = "<group>"; };
 		5567509C1F65119BFD2FF613 /* ContentFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentFilter.swift; sourceTree = "<group>"; };
 		62F3248C082FA82BE2D8BEAD /* SupabaseAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseAuthService.swift; sourceTree = "<group>"; };
 		6463668D9561434CA22C32DB /* BlockedUsersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockedUsersView.swift; sourceTree = "<group>"; };
@@ -218,6 +220,7 @@
 			children = (
 				D131E2722C9707B0B0486726 /* Assets.xcassets */,
 				23ECD5275D541486CF1FB4FE /* Info.plist */,
+				497512C08A4FC97BDDAAF1CA /* karaliste.txt */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -374,6 +377,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				BF9AD710D9D7207D01E83A92 /* Assets.xcassets in Resources */,
+				91410947DBF147E10E24EE44 /* karaliste.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
