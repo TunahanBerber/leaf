@@ -17,6 +17,13 @@ struct ConversationView: View {
     @State private var showReportSuccess = false
     @State private var messageToReport: Message?   // context menüden mesaj bazlı şikayet
     @State private var filterWarning: String?
+    // Mesajlar tamamen yüklenene kadar listeyi göstermiyoruz — aksi halde
+    // ScrollView, socialService.messages henüz boş/bir önceki sohbetten kalma
+    // haldeyken ilk layout'unu alıyor ve .defaultScrollAnchor(.bottom) yanlış
+    // (o anki) içeriğe göre ankraj oluyor; mesajlar geldikten sonra listenin
+    // gerçek altına otomatik kaymıyordu. Liste ancak dolu veriyle ilk kez
+    // oluştuğunda anchor doğru çalışıyor.
+    @State private var isLoadingMessages = true
 
     private var currentUserId: String {
         auth.currentUser?.id.uuidString.lowercased() ?? ""
@@ -31,10 +38,17 @@ struct ConversationView: View {
         ZStack {
             LeafGradientBackground()
 
-            messageListView
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    inputArea
+            Group {
+                if isLoadingMessages {
+                    ProgressView()
+                        .tint(LeafColors.accent(for: colorScheme))
+                } else {
+                    messageListView
                 }
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                inputArea
+            }
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -109,8 +123,14 @@ struct ConversationView: View {
         } message: {
             Text(filterWarning ?? "")
         }
-        .task {
+        .task(id: conversationId) {
+            isLoadingMessages = true
+            // socialService.messages sohbetler arasında paylaşılan tek bir dizi —
+            // temizlemezsek bir önceki sohbetin mesajları bu satır çalışana kadar
+            // (spinner arkasında olsa bile) belleğimizde kalır.
+            socialService.messages = []
             await socialService.fetchMessages(conversationId: conversationId)
+            isLoadingMessages = false
             await socialService.subscribeToMessages(conversationId: conversationId)
             PushNotificationService.shared.clearBadge()
         }
