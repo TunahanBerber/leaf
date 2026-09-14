@@ -8,6 +8,8 @@ struct DiscoverView: View {
     @State private var excludedIds: Set<String> = []
     @State private var isSubmitting = false
     @State private var showSentRequests = false
+    @State private var showCityFilter = false
+    @State private var cityFilter: String?
 
     // zaten sohbeti olan kullanıcılar
     private var matchedUserIds: Set<String> {
@@ -50,17 +52,22 @@ struct DiscoverView: View {
             .navigationTitle("Keşfet")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    cityFilterButton
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     sentRequestsButton
                 }
             }
+            // fetchSentRequests filtreden bağımsız, bir kez yeterli.
             .task {
-                // discoverUsers()/fetchSentRequests() artık listeyi ekrana yansıtmadan
-                // önce ilgili fotoğrafları kendi içinde önbelleğe alıyor (SocialService),
-                // burada ayrıca bir şey yapmaya gerek yok.
-                async let discover: () = socialService.discoverUsers()
-                async let sent: () = socialService.fetchSentRequests()
-                _ = await (discover, sent)
+                await socialService.fetchSentRequests()
+            }
+            // cityFilter değiştiğinde deste yeniden çekiliyor — discoverUsers
+            // zaten listeyi ekrana yansıtmadan önce fotoğrafları kendi içinde
+            // önbelleğe alıyor (SocialService), burada ayrıca bir şey gerekmiyor.
+            .task(id: cityFilter) {
+                await socialService.discoverUsers(cityFilter: cityFilter)
             }
             .navigationDestination(item: $navigateToProfile) { profile in
                 UserProfileView(profile: profile)
@@ -68,7 +75,40 @@ struct DiscoverView: View {
             .sheet(isPresented: $showSentRequests) {
                 SentRequestsSheet()
             }
+            .sheet(isPresented: $showCityFilter) {
+                CityPickerSheet(selectedCity: $cityFilter)
+            }
         }
+    }
+
+    // MARK: - Şehir Filtresi
+
+    private var cityFilterButton: some View {
+        // X'i ayrı bir Button olarak dışarıda tutuyoruz — bir Button'un LABEL'ı
+        // içine .onTapGesture ile ikinci bir tıklanabilir eleman koymak SwiftUI'de
+        // hit-test çakışması yaratıyor: iç dokunuş yerine dış Button'un kendi
+        // action'ı tetikleniyor (X'e basınca filtre temizlenmek yerine sheet
+        // yeniden açılıp başka bir şehir seçiliyordu).
+        HStack(spacing: LeafSpacing.xs) {
+            Button {
+                showCityFilter = true
+            } label: {
+                HStack(spacing: LeafSpacing.xxs) {
+                    Image(systemName: "mappin.circle.fill")
+                    Text(cityFilter ?? "Tüm Şehirler")
+                        .font(.subheadline.weight(.medium))
+                        .lineLimit(1)
+                }
+            }
+            if cityFilter != nil {
+                Button {
+                    cityFilter = nil
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                }
+            }
+        }
+        .foregroundStyle(LeafColors.accent(for: colorScheme))
     }
 
     // MARK: - İstekler (gönderdiklerim)
@@ -204,6 +244,33 @@ struct DiscoverStackCard: View {
                                 .font(.title3)
                                 .foregroundStyle(LeafColors.textTertiary(for: colorScheme))
                         }
+                    }
+
+                    // Cinsiyet + şehir — discover_users RPC'si bunları zaten
+                    // dönüyordu ama kartta hiç gösterilmiyordu.
+                    if profile.gender != nil || profile.city != nil {
+                        HStack(spacing: LeafSpacing.xs) {
+                            if let genderName = Gender(rawValue: profile.gender ?? "")?.displayName {
+                                Text(genderName)
+                            }
+                            if let city = profile.city {
+                                if profile.gender != nil {
+                                    Text("·").foregroundStyle(LeafColors.textTertiary(for: colorScheme))
+                                }
+                                Label(city, systemImage: "mappin.and.ellipse")
+                                    .labelStyle(.titleAndIcon)
+                            }
+                            if profile.sameCity == true {
+                                Text("Aynı Şehir")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, LeafSpacing.xs)
+                                    .padding(.vertical, 2)
+                                    .background(LeafColors.accent(for: colorScheme), in: Capsule())
+                            }
+                        }
+                        .font(.subheadline)
+                        .foregroundStyle(LeafColors.textSecondary(for: colorScheme))
                     }
 
                     if let bio = profile.bio, !bio.isEmpty {
