@@ -7,11 +7,25 @@ import Foundation
 
 enum ContentFilter {
 
-    // basit bir liste — ihtiyaç oldukça buraya kelime eklemek yeterli
-    private static let bannedWords: [String] = [
-        "amk", "aq", "a.q", "orospu", "piç", "yavşak", "siktir",
-        "ibne", "kahpe", "şerefsiz", "puşt", "gavat", "sürtük"
-    ]
+    // Kelime listesi elle tutulmuyor — ooguz/turkce-kufur-karaliste GitHub
+    // deposundaki karaliste.txt'nin bir kopyası (Leaf/Resources/karaliste.txt,
+    // CC-BY-SA-4.0). Liste güncellenince buradaki dosyayı da tekrar indirip
+    // değiştirmek yeterli, kod tarafında değişiklik gerekmiyor.
+    // https://github.com/ooguz/turkce-kufur-karaliste/blob/master/karaliste.txt
+    private static let bannedWords: Set<String> = {
+        guard
+            let url = Bundle.main.url(forResource: "karaliste", withExtension: "txt"),
+            let contents = try? String(contentsOf: url, encoding: .utf8)
+        else { return [] }
+
+        let locale = Locale(identifier: "tr_TR")
+        return Set(
+            contents
+                .split(separator: "\n")
+                .map { $0.trimmingCharacters(in: .whitespaces).lowercased(with: locale) }
+                .filter { !$0.isEmpty }
+        )
+    }()
 
     // mesajda yasak kelime var mı diye bakar
     static func isAllowed(_ text: String) -> Bool {
