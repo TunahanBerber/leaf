@@ -108,6 +108,12 @@ struct Message: Identifiable, Hashable, Codable {
     var content: String
     var isRead: Bool
     var createdAt: Date
+    // "text" (normal mesaj) veya "book_share" (kitap kartı) — kolon DB'de
+    // NOT NULL DEFAULT 'text' olduğu için eski satırlar da her zaman dolu gelir.
+    var messageType: String = "text"
+    // Sadece messageType == "book_share" iken dolu. content o durumda
+    // kartın altına eklenen isteğe bağlı alt yazı olarak kullanılıyor.
+    var sharedBook: SharedBookPayload?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -116,5 +122,44 @@ struct Message: Identifiable, Hashable, Codable {
         case content
         case isRead         = "is_read"
         case createdAt      = "created_at"
+        case messageType    = "message_type"
+        case sharedBook     = "shared_book"
+    }
+
+    // InboxView'daki sohbet listesi son mesaj önizlemesi için — book_share'de
+    // content boşsa (kullanıcı alt yazı yazmadıysa) ham boş metin yerine
+    // anlamlı bir özet gösteriyoruz.
+    var previewText: String {
+        guard messageType == "book_share" else { return content }
+        let title = sharedBook?.title ?? "bir kitap"
+        return content.isEmpty ? "📚 \(title) paylaştı" : content
+    }
+}
+
+// Sohbette paylaşılan kitap kartının verisi — messages.shared_book jsonb
+// kolonuna bu şekilde yazılıp aynı şekilde okunuyor.
+struct SharedBookPayload: Codable, Hashable {
+    var title: String
+    var author: String
+    var coverImageUrl: String?
+    var currentPage: Int
+    var totalPages: Int
+    // İkisi de doluysa kartın altında bir not alıntısı gösteriliyor —
+    // "sadece ilerleme" paylaşımında ikisi de nil kalıyor.
+    var noteTitle: String?
+    var noteContent: String?
+
+    enum CodingKeys: String, CodingKey {
+        case title, author
+        case coverImageUrl = "cover_image_url"
+        case currentPage   = "current_page"
+        case totalPages    = "total_pages"
+        case noteTitle     = "note_title"
+        case noteContent   = "note_content"
+    }
+
+    var progress: Double {
+        guard totalPages > 0 else { return 0 }
+        return min(Double(currentPage) / Double(totalPages), 1)
     }
 }

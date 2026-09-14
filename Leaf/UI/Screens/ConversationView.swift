@@ -8,6 +8,7 @@ struct ConversationView: View {
 
     @Environment(SocialService.self) var socialService
     @EnvironmentObject var auth: SupabaseAuthService
+    @EnvironmentObject var bookStore: BookStore
     @Environment(\.colorScheme) var colorScheme
 
     @State private var messageText = ""
@@ -15,6 +16,7 @@ struct ConversationView: View {
     @State private var showBlockConfirm  = false
     @State private var showReportSheet   = false
     @State private var showReportSuccess = false
+    @State private var showShareBookPicker = false
     @State private var messageToReport: Message?   // context menüden mesaj bazlı şikayet
     @State private var filterWarning: String?
     // Mesajlar tamamen yüklenene kadar listeyi göstermiyoruz — aksi halde
@@ -91,6 +93,9 @@ struct ConversationView: View {
                 Task { await socialService.blockUser(userId: uid) }
             }
             Button("İptal", role: .cancel) { }
+        }
+        .sheet(isPresented: $showShareBookPicker) {
+            ShareBookPickerSheet(conversationId: conversationId)
         }
         .sheet(isPresented: $showReportSheet) {
             ReportSheet(username: otherUsername) { reason, description in
@@ -257,6 +262,17 @@ struct ConversationView: View {
 
     private var inputBar: some View {
         HStack(alignment: .bottom, spacing: LeafSpacing.xs) {
+            // WhatsApp'taki gibi solda + — kütüphanenden bir kitabı (güncel
+            // sayfası ya da bir notuyla) doğrudan bu sohbete gönderiyor.
+            Button {
+                showShareBookPicker = true
+            } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 30))
+                    .foregroundStyle(LeafColors.accent(for: colorScheme))
+            }
+            .padding(.bottom, 2)
+
             TextField("Mesaj yaz...", text: $messageText, axis: .vertical)
                 .lineLimit(1...5)
                 .focused($isTextFieldFocused)
@@ -399,38 +415,44 @@ struct MessageBubble: View {
             if isOwn { Spacer(minLength: 56) }
 
             VStack(alignment: isOwn ? .trailing : .leading, spacing: 3) {
-                Text(message.content)
-                    .font(.body)
-                    .foregroundStyle(isOwn ? .white : LeafColors.textPrimary(for: colorScheme))
-                    .padding(.horizontal, LeafSpacing.sm)
-                    .padding(.vertical, 9)
-                    .background(
-                        isOwn
-                            ? LeafColors.accent(for: colorScheme)
-                            : LeafColors.surfacePrimary(for: colorScheme)
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: LeafRadius.large))
-                    .overlay {
-                        if !isOwn {
-                            RoundedRectangle(cornerRadius: LeafRadius.large)
-                                .stroke(LeafColors.borderSubtle(for: colorScheme), lineWidth: 1)
+                Group {
+                    if message.messageType == "book_share", let sharedBook = message.sharedBook {
+                        SharedBookCard(book: sharedBook, caption: message.content, isOwn: isOwn)
+                    } else {
+                        Text(message.content)
+                            .font(.body)
+                            .foregroundStyle(isOwn ? .white : LeafColors.textPrimary(for: colorScheme))
+                            .padding(.horizontal, LeafSpacing.sm)
+                            .padding(.vertical, 9)
+                    }
+                }
+                .background(
+                    isOwn
+                        ? LeafColors.accent(for: colorScheme)
+                        : LeafColors.surfacePrimary(for: colorScheme)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: LeafRadius.large))
+                .overlay {
+                    if !isOwn {
+                        RoundedRectangle(cornerRadius: LeafRadius.large)
+                            .stroke(LeafColors.borderSubtle(for: colorScheme), lineWidth: 1)
+                    }
+                }
+                .contextMenu {
+                    if isOwn {
+                        Button(role: .destructive) {
+                            onDelete()
+                        } label: {
+                            Label("Mesajı Sil", systemImage: "trash")
+                        }
+                    } else if let onReport {
+                        Button {
+                            onReport()
+                        } label: {
+                            Label("Şikayet Et", systemImage: "flag")
                         }
                     }
-                    .contextMenu {
-                        if isOwn {
-                            Button(role: .destructive) {
-                                onDelete()
-                            } label: {
-                                Label("Mesajı Sil", systemImage: "trash")
-                            }
-                        } else if let onReport {
-                            Button {
-                                onReport()
-                            } label: {
-                                Label("Şikayet Et", systemImage: "flag")
-                            }
-                        }
-                    }
+                }
 
                 Text(message.createdAt.formatted(.dateTime.hour().minute()))
                     .font(.caption2)
@@ -440,5 +462,223 @@ struct MessageBubble: View {
 
             if !isOwn { Spacer(minLength: 56) }
         }
+    }
+}
+
+// MARK: - Sohbette Paylaşılan Kitap Kartı
+
+struct SharedBookCard: View {
+    let book: SharedBookPayload
+    let caption: String
+    let isOwn: Bool
+    @Environment(\.colorScheme) var colorScheme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: LeafSpacing.xs) {
+            HStack(spacing: LeafSpacing.sm) {
+                CoverImageView(coverUrl: book.coverImageUrl, placeholderIconSize: 20)
+                    .frame(width: 52, height: 74)
+                    .clipShape(RoundedRectangle(cornerRadius: LeafRadius.small))
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(book.title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(isOwn ? .white : LeafColors.textPrimary(for: colorScheme))
+                        .lineLimit(2)
+                    Text(book.author)
+                        .font(.caption)
+                        .foregroundStyle(isOwn ? .white.opacity(0.8) : LeafColors.textSecondary(for: colorScheme))
+                        .lineLimit(1)
+
+                    if book.totalPages > 0 {
+                        HStack(spacing: LeafSpacing.xxs) {
+                            Image(systemName: "bookmark.fill")
+                                .font(.system(size: 10))
+                            Text("Sayfa \(book.currentPage) / \(book.totalPages) · %\(Int(book.progress * 100))")
+                                .font(.caption2.weight(.medium))
+                        }
+                        .foregroundStyle(isOwn ? .white.opacity(0.9) : LeafColors.accent(for: colorScheme))
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+
+            if let noteTitle = book.noteTitle, let noteContent = book.noteContent {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(noteTitle)
+                        .font(.caption.weight(.semibold))
+                    Text(noteContent)
+                        .font(.caption2)
+                        .lineLimit(4)
+                }
+                .foregroundStyle(isOwn ? .white.opacity(0.95) : LeafColors.textPrimary(for: colorScheme))
+                .padding(.top, 2)
+                .padding(.horizontal, LeafSpacing.xs)
+                .padding(.vertical, LeafSpacing.xxs)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background {
+                    RoundedRectangle(cornerRadius: LeafRadius.small, style: .continuous)
+                        .fill(isOwn ? .white.opacity(0.15) : LeafColors.accent(for: colorScheme).opacity(0.1))
+                }
+            }
+
+            if !caption.isEmpty {
+                Text(caption)
+                    .font(.body)
+                    .foregroundStyle(isOwn ? .white : LeafColors.textPrimary(for: colorScheme))
+                    .padding(.top, 2)
+            }
+        }
+        .padding(LeafSpacing.sm)
+        .frame(width: 230, alignment: .leading)
+    }
+}
+
+// MARK: - Sohbetten Kitap/Not Seçme Sheet'i (WhatsApp'taki + gibi)
+
+// Sohbet zaten belli olduğu için (BookDetailView'daki ShareBookToChatSheet'in
+// aksine) burada bir sohbet seçtirmiyoruz — sadece kitap, sonra istersen o
+// kitabın notlarından biri. Seçilince anında gönderiyor; ek bir alt yazı
+// istiyorsan zaten aynı sohbette normal mesaj olarak yazabilirsin.
+struct ShareBookPickerSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var scheme
+    @EnvironmentObject private var bookStore: BookStore
+    @Environment(SocialService.self) private var socialService
+    let conversationId: String
+
+    @State private var selectedBook: Book?
+    @State private var isSending = false
+
+    private var myBooks: [Book] {
+        bookStore.books.filter { !$0.isWishlist }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                LeafGradientBackground()
+
+                if let selectedBook {
+                    optionsList(for: selectedBook)
+                } else if myBooks.isEmpty {
+                    emptyState
+                } else {
+                    bookList
+                }
+            }
+            .navigationTitle(selectedBook == nil ? "Kitap Seç" : "Ne Paylaşılsın?")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(selectedBook == nil ? "İptal" : "Geri") {
+                        if selectedBook != nil {
+                            withAnimation(LeafMotion.fast) { selectedBook = nil }
+                        } else {
+                            dismiss()
+                        }
+                    }
+                }
+            }
+            .disabled(isSending)
+            .overlay {
+                if isSending {
+                    ProgressView().tint(LeafColors.accent(for: scheme))
+                }
+            }
+        }
+    }
+
+    private var bookList: some View {
+        List(myBooks) { book in
+            Button {
+                withAnimation(LeafMotion.fast) { selectedBook = book }
+            } label: {
+                HStack(spacing: LeafSpacing.sm) {
+                    CoverImageView(coverUrl: book.coverImageUrl, placeholderIconSize: 16)
+                        .frame(width: 40, height: 56)
+                        .clipShape(RoundedRectangle(cornerRadius: LeafRadius.small))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(book.title)
+                            .foregroundStyle(LeafColors.textPrimary(for: scheme))
+                            .lineLimit(1)
+                        Text(book.author)
+                            .font(.caption)
+                            .foregroundStyle(LeafColors.textSecondary(for: scheme))
+                    }
+                }
+            }
+            .listRowBackground(Color.clear)
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+    }
+
+    private func optionsList(for book: Book) -> some View {
+        List {
+            Section {
+                Button {
+                    Task { await send(book: book, note: nil) }
+                } label: {
+                    Label(
+                        book.totalPages > 0
+                            ? "Sadece ilerlemeyi paylaş (Sayfa \(book.currentPage) / \(book.totalPages))"
+                            : "Kitabı paylaş",
+                        systemImage: "bookmark.fill"
+                    )
+                }
+            }
+
+            if !book.notes.isEmpty {
+                Section("Bir not ekle") {
+                    ForEach(book.notes.sorted { $0.createdAt > $1.createdAt }) { note in
+                        Button {
+                            Task { await send(book: book, note: note) }
+                        } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(note.title)
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(LeafColors.textPrimary(for: scheme))
+                                Text(note.content)
+                                    .font(.caption)
+                                    .foregroundStyle(LeafColors.textSecondary(for: scheme))
+                                    .lineLimit(2)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: LeafSpacing.md) {
+            Image(systemName: "books.vertical")
+                .font(.system(size: 40))
+                .foregroundStyle(LeafColors.textTertiary(for: scheme))
+            Text("Kütüphanen boş")
+                .font(.headline)
+                .foregroundStyle(LeafColors.textPrimary(for: scheme))
+            Text("Paylaşacak bir kitap için önce\nKitaplığım'a bir şey ekle.")
+                .font(.subheadline)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(LeafColors.textSecondary(for: scheme))
+        }
+        .padding(LeafSpacing.xxl)
+    }
+
+    private func send(book: Book, note: BookNote?) async {
+        isSending = true
+        await socialService.sendBookShare(
+            conversationId: conversationId,
+            book: book,
+            noteTitle: note?.title,
+            noteContent: note?.content,
+            caption: ""
+        )
+        isSending = false
+        dismiss()
     }
 }

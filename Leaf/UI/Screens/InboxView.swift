@@ -275,7 +275,7 @@ struct ConversationRow: View {
                     .foregroundStyle(LeafColors.textPrimary(for: colorScheme))
 
                 if let last = conversation.lastMessage {
-                    Text(last.content)
+                    Text(last.previewText)
                         .font(isUnread ? .subheadline.bold() : .subheadline)
                         .foregroundStyle(isUnread
                             ? LeafColors.textPrimary(for: colorScheme)
