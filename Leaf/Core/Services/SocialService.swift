@@ -929,6 +929,45 @@ final class SocialService {
         }
     }
 
+    // Kitap detayından "Sohbete Paylaş" ile çağrılıyor — güncel sayfa/ilerleme
+    // dahil kitabın anlık halini bir kart olarak gönderiyor. caption boş
+    // geçilebilir (kartın altına eklenen isteğe bağlı not).
+    func sendBookShare(conversationId: String, book: Book, caption: String) async {
+        guard let userId = try? await supabase.auth.session.user.id.uuidString.lowercased() else { return }
+
+        let sharedBook: AnyJSON = .object([
+            "title":            .string(book.title),
+            "author":           .string(book.author),
+            "cover_image_url":  book.coverImageUrl.map(AnyJSON.string) ?? .null,
+            "current_page":     .double(Double(book.currentPage)),
+            "total_pages":      .double(Double(book.totalPages))
+        ])
+
+        let entry: [String: AnyJSON] = [
+            "conversation_id": .string(conversationId),
+            "sender_id":       .string(userId),
+            "content":         .string(caption),
+            "message_type":    .string("book_share"),
+            "shared_book":     sharedBook
+        ]
+
+        do {
+            let sent: Message = try await supabase
+                .from("messages")
+                .insert(entry)
+                .select()
+                .single()
+                .execute()
+                .value
+
+            messages.append(sent)
+            updateMessagesCache(conversationId, messages)
+        } catch {
+            self.error = "Kitap paylaşılamadı."
+            print("[SocialService] sendBookShare error: \(error)")
+        }
+    }
+
     func deleteConversation(_ conversation: Conversation) async {
         do {
             try await supabase
@@ -1023,7 +1062,9 @@ final class SocialService {
                     senderId: senderId,
                     content: content,
                     isRead: false,
-                    createdAt: createdAt
+                    createdAt: createdAt,
+                    messageType: record["message_type"]?.stringValue ?? "text",
+                    sharedBook: try? record["shared_book"]?.decode(as: SharedBookPayload.self)
                 )
 
                 await MainActor.run {
@@ -1180,7 +1221,9 @@ final class SocialService {
                     senderId: senderId,
                     content: content,
                     isRead: false,
-                    createdAt: createdAt
+                    createdAt: createdAt,
+                    messageType: record["message_type"]?.stringValue ?? "text",
+                    sharedBook: try? record["shared_book"]?.decode(as: SharedBookPayload.self)
                 )
 
                 await MainActor.run {

@@ -7,6 +7,7 @@ struct BookDetailView: View {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var store: BookStore
+    @Environment(SocialService.self) private var socialService
 
     // kitabın güncel halini store'dan okuyorum — local state tutmuyorum
     let bookId: String
@@ -15,6 +16,7 @@ struct BookDetailView: View {
     @State private var showEditBook = false
     @State private var showDeleteConfirmation = false
     @State private var showEditPage = false
+    @State private var showShareToChat = false
 
     // store'dan güncel kitabı bul
     private var book: Book? {
@@ -72,6 +74,16 @@ struct BookDetailView: View {
         }
         .scrollIndicators(.hidden)
         .toolbar {
+            // Mesajlaşma zaten 18 yaş altına kapalı — sohbeti olmayan/erişemeyen
+            // birine "sohbete paylaş" butonu göstermenin bir anlamı yok.
+            if socialService.isSocialAllowed {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { showShareToChat = true } label: {
+                        Image(systemName: "paperplane")
+                            .foregroundStyle(LeafColors.accent(for: scheme))
+                    }
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button { showAddNote = true } label: {
                     Image(systemName: "note.text.badge.plus")
@@ -98,6 +110,9 @@ struct BookDetailView: View {
                 updated.currentPage = min(newPage, book.totalPages)
                 Task { await store.updateBook(updated) }
             }
+        }
+        .sheet(isPresented: $showShareToChat) {
+            ShareBookToChatSheet(book: book)
         }
     }
 
@@ -297,5 +312,115 @@ struct PageProgressSheet: View {
         }
         .presentationDetents([.height(280)])
         .presentationDragIndicator(.visible)
+    }
+}
+
+// MARK: - Sohbete Paylaş Sheet'i
+
+// Kitabı güncel sayfa/ilerlemesiyle birlikte bir sohbete kart olarak
+// gönderiyor — hangi sohbete gideceğini seçtirip isteğe bağlı bir alt yazı
+// ekletiyor. Karşı taraf kartı sadece görüntüler, kütüphanesine ekleyemez.
+struct ShareBookToChatSheet: View {
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.dismiss) private var dismiss
+    @Environment(SocialService.self) private var socialService
+    let book: Book
+
+    @State private var selectedConversationId: String?
+    @State private var caption = ""
+    @State private var isSending = false
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                LeafGradientBackground()
+
+                if socialService.conversations.isEmpty {
+                    emptyState
+                } else {
+                    VStack(spacing: 0) {
+                        List(socialService.conversations) { conversation in
+                            Button {
+                                withAnimation(LeafMotion.fast) { selectedConversationId = conversation.id }
+                            } label: {
+                                HStack(spacing: LeafSpacing.sm) {
+                                    RevealablePhotoView(userId: conversation.otherUser?.id ?? "", size: 40)
+                                    Text(conversation.otherUser?.username ?? "Kullanıcı")
+                                        .foregroundStyle(LeafColors.textPrimary(for: scheme))
+                                    Spacer()
+                                    if selectedConversationId == conversation.id {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundStyle(LeafColors.accent(for: scheme))
+                                    }
+                                }
+                            }
+                            .listRowBackground(Color.clear)
+                        }
+                        .listStyle(.plain)
+                        .scrollContentBackground(.hidden)
+
+                        if selectedConversationId != nil {
+                            VStack(spacing: LeafSpacing.sm) {
+                                LeafTextField(title: "Mesaj", text: $caption, placeholder: "İsteğe bağlı bir not ekle...")
+                                Button {
+                                    Task { await send() }
+                                } label: {
+                                    Group {
+                                        if isSending {
+                                            ProgressView().tint(.white)
+                                        } else {
+                                            Text("Gönder").fontWeight(.semibold)
+                                        }
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, LeafSpacing.sm)
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .tint(LeafColors.accent(for: scheme))
+                                .disabled(isSending)
+                            }
+                            .padding(LeafSpacing.md)
+                            .background(.ultraThinMaterial)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Sohbete Paylaş")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("İptal") { dismiss() }
+                }
+            }
+            .task { await socialService.fetchConversations() }
+        }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: LeafSpacing.md) {
+            Image(systemName: "bubble.left.and.bubble.right")
+                .font(.system(size: 40))
+                .foregroundStyle(LeafColors.textTertiary(for: scheme))
+            Text("Henüz sohbetin yok")
+                .font(.headline)
+                .foregroundStyle(LeafColors.textPrimary(for: scheme))
+            Text("Keşfet'ten biriyle eşleşince\nkitaplarını buradan paylaşabilirsin.")
+                .font(.subheadline)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(LeafColors.textSecondary(for: scheme))
+        }
+        .padding(LeafSpacing.xxl)
+    }
+
+    private func send() async {
+        guard let conversationId = selectedConversationId else { return }
+        isSending = true
+        await socialService.sendBookShare(
+            conversationId: conversationId,
+            book: book,
+            caption: caption.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+        isSending = false
+        dismiss()
     }
 }

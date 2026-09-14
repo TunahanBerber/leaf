@@ -399,38 +399,44 @@ struct MessageBubble: View {
             if isOwn { Spacer(minLength: 56) }
 
             VStack(alignment: isOwn ? .trailing : .leading, spacing: 3) {
-                Text(message.content)
-                    .font(.body)
-                    .foregroundStyle(isOwn ? .white : LeafColors.textPrimary(for: colorScheme))
-                    .padding(.horizontal, LeafSpacing.sm)
-                    .padding(.vertical, 9)
-                    .background(
-                        isOwn
-                            ? LeafColors.accent(for: colorScheme)
-                            : LeafColors.surfacePrimary(for: colorScheme)
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: LeafRadius.large))
-                    .overlay {
-                        if !isOwn {
-                            RoundedRectangle(cornerRadius: LeafRadius.large)
-                                .stroke(LeafColors.borderSubtle(for: colorScheme), lineWidth: 1)
+                Group {
+                    if message.messageType == "book_share", let sharedBook = message.sharedBook {
+                        SharedBookCard(book: sharedBook, caption: message.content, isOwn: isOwn)
+                    } else {
+                        Text(message.content)
+                            .font(.body)
+                            .foregroundStyle(isOwn ? .white : LeafColors.textPrimary(for: colorScheme))
+                            .padding(.horizontal, LeafSpacing.sm)
+                            .padding(.vertical, 9)
+                    }
+                }
+                .background(
+                    isOwn
+                        ? LeafColors.accent(for: colorScheme)
+                        : LeafColors.surfacePrimary(for: colorScheme)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: LeafRadius.large))
+                .overlay {
+                    if !isOwn {
+                        RoundedRectangle(cornerRadius: LeafRadius.large)
+                            .stroke(LeafColors.borderSubtle(for: colorScheme), lineWidth: 1)
+                    }
+                }
+                .contextMenu {
+                    if isOwn {
+                        Button(role: .destructive) {
+                            onDelete()
+                        } label: {
+                            Label("Mesajı Sil", systemImage: "trash")
+                        }
+                    } else if let onReport {
+                        Button {
+                            onReport()
+                        } label: {
+                            Label("Şikayet Et", systemImage: "flag")
                         }
                     }
-                    .contextMenu {
-                        if isOwn {
-                            Button(role: .destructive) {
-                                onDelete()
-                            } label: {
-                                Label("Mesajı Sil", systemImage: "trash")
-                            }
-                        } else if let onReport {
-                            Button {
-                                onReport()
-                            } label: {
-                                Label("Şikayet Et", systemImage: "flag")
-                            }
-                        }
-                    }
+                }
 
                 Text(message.createdAt.formatted(.dateTime.hour().minute()))
                     .font(.caption2)
@@ -440,5 +446,55 @@ struct MessageBubble: View {
 
             if !isOwn { Spacer(minLength: 56) }
         }
+    }
+}
+
+// MARK: - Sohbette Paylaşılan Kitap Kartı
+
+struct SharedBookCard: View {
+    let book: SharedBookPayload
+    let caption: String
+    let isOwn: Bool
+    @Environment(\.colorScheme) var colorScheme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: LeafSpacing.xs) {
+            HStack(spacing: LeafSpacing.sm) {
+                CoverImageView(coverUrl: book.coverImageUrl, placeholderIconSize: 20)
+                    .frame(width: 52, height: 74)
+                    .clipShape(RoundedRectangle(cornerRadius: LeafRadius.small))
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(book.title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(isOwn ? .white : LeafColors.textPrimary(for: colorScheme))
+                        .lineLimit(2)
+                    Text(book.author)
+                        .font(.caption)
+                        .foregroundStyle(isOwn ? .white.opacity(0.8) : LeafColors.textSecondary(for: colorScheme))
+                        .lineLimit(1)
+
+                    if book.totalPages > 0 {
+                        HStack(spacing: LeafSpacing.xxs) {
+                            Image(systemName: "bookmark.fill")
+                                .font(.system(size: 10))
+                            Text("Sayfa \(book.currentPage) / \(book.totalPages) · %\(Int(book.progress * 100))")
+                                .font(.caption2.weight(.medium))
+                        }
+                        .foregroundStyle(isOwn ? .white.opacity(0.9) : LeafColors.accent(for: colorScheme))
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+
+            if !caption.isEmpty {
+                Text(caption)
+                    .font(.body)
+                    .foregroundStyle(isOwn ? .white : LeafColors.textPrimary(for: colorScheme))
+                    .padding(.top, 2)
+            }
+        }
+        .padding(LeafSpacing.sm)
+        .frame(width: 230, alignment: .leading)
     }
 }
