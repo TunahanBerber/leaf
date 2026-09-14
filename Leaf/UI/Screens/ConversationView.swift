@@ -505,8 +505,15 @@ struct SharedBookCard: View {
 
             if let noteTitle = book.noteTitle, let noteContent = book.noteContent {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(noteTitle)
-                        .font(.caption.weight(.semibold))
+                    HStack(spacing: LeafSpacing.xxs) {
+                        Text(noteTitle)
+                            .font(.caption.weight(.semibold))
+                        if let notePage = book.notePageNumber, notePage > 0 {
+                            Text("s. \(notePage)")
+                                .font(.caption2.weight(.medium))
+                                .opacity(0.8)
+                        }
+                    }
                     Text(noteContent)
                         .font(.caption2)
                         .lineLimit(4)
@@ -547,11 +554,18 @@ struct ShareBookPickerSheet: View {
     @Environment(SocialService.self) private var socialService
     let conversationId: String
 
-    @State private var selectedBook: Book?
+    @State private var selectedBookId: String?
     @State private var isSending = false
 
     private var myBooks: [Book] {
         bookStore.books.filter { !$0.isWishlist }
+    }
+
+    // bookStore.books'tan canlı okuyoruz — fetchNotes tamamlanınca books[idx].notes
+    // güncelleniyor, bir @State kopyası tutsaydık bu güncellemeyi kaçırırdık.
+    private var selectedBook: Book? {
+        guard let selectedBookId else { return nil }
+        return bookStore.books.first { $0.id == selectedBookId }
     }
 
     var body: some View {
@@ -572,12 +586,20 @@ struct ShareBookPickerSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(selectedBook == nil ? "İptal" : "Geri") {
-                        if selectedBook != nil {
-                            withAnimation(LeafMotion.fast) { selectedBook = nil }
+                        if selectedBookId != nil {
+                            withAnimation(LeafMotion.fast) { selectedBookId = nil }
                         } else {
                             dismiss()
                         }
                     }
+                }
+            }
+            // BookDetailView'ı hiç açmadan doğrudan sohbetten paylaşmaya
+            // çalışıyor olabilirsin — o zaman kitabın notes'u BookStore'da
+            // henüz hiç çekilmemiş (boş) olabilir. Kitap seçilince tazeliyoruz.
+            .task(id: selectedBookId) {
+                if let selectedBookId {
+                    await bookStore.fetchNotes(for: selectedBookId)
                 }
             }
             .disabled(isSending)
@@ -592,7 +614,7 @@ struct ShareBookPickerSheet: View {
     private var bookList: some View {
         List(myBooks) { book in
             Button {
-                withAnimation(LeafMotion.fast) { selectedBook = book }
+                withAnimation(LeafMotion.fast) { selectedBookId = book.id }
             } label: {
                 HStack(spacing: LeafSpacing.sm) {
                     CoverImageView(coverUrl: book.coverImageUrl, placeholderIconSize: 16)
@@ -676,6 +698,7 @@ struct ShareBookPickerSheet: View {
             book: book,
             noteTitle: note?.title,
             noteContent: note?.content,
+            notePageNumber: note?.pageNumber,
             caption: ""
         )
         isSending = false
