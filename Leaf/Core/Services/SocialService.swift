@@ -799,25 +799,81 @@ final class SocialService {
 
     // MARK: - Mesajlar
 
+    // Sohbet başına: son fetch/loadOlder sayfasının tam mı geldiği (henüz daha
+    // eskisi var mı) — sentinel satır bunu okuyup daha fazla göstermeyi bırakıyor.
+    private var hasMoreOlderMessages: [String: Bool] = [:]
+    private let messagesPageSize = 30
+
+    func hasMoreMessages(for conversationId: String) -> Bool {
+        hasMoreOlderMessages[conversationId] ?? true
+    }
+
     func fetchMessages(conversationId: String) async {
         isLoading = true
         defer { isLoading = false }
 
         do {
-            let msgs: [Message] = try await supabase
+            // Sohbetin TÜM geçmişini değil, WhatsApp/Telegram'daki gibi sadece
+            // son messagesPageSize mesajı çekiyoruz — geçmiş ne kadar büyürse
+            // büyüsün her açılışın maliyeti sabit kalıyor. Daha eskisi yukarı
+            // kaydırınca loadOlderMessages ile cursor-based (created_at'e göre)
+            // sayfalanarak geliyor.
+            let page: [Message] = try await supabase
                 .from("messages")
                 .select()
                 .eq("conversation_id", value: conversationId)
-                .order("created_at", ascending: true)
+                .order("created_at", ascending: false)
+                .limit(messagesPageSize)
                 .execute()
                 .value
 
-            messages = msgs
-            updateMessagesCache(conversationId, msgs)
+            let freshPage = Array(page.reversed())
+
+            // Cache'den zaten daha eski mesajlar gösteriliyor olabilir (kullanıcı
+            // önceki ziyarette yukarı kaydırmış olabilir) — bu arka plan
+            // tazelemesi onları silip atmasın diye, taze sayfanın başladığı yeri
+            // mevcut messages içinde bulup öncesini koruyoruz.
+            if let firstFreshId = freshPage.first?.id,
+               let splitIndex = messages.firstIndex(where: { $0.id == firstFreshId }) {
+                messages = Array(messages[..<splitIndex]) + freshPage
+            } else {
+                messages = freshPage
+                hasMoreOlderMessages[conversationId] = page.count == messagesPageSize
+            }
+
+            updateMessagesCache(conversationId, messages)
             await markAsRead(conversationId: conversationId)
             await refreshUnreadCount()
         } catch {
             self.error = "Mesajlar yüklenemedi."
+        }
+    }
+
+    // ConversationView, mesaj listesinin en üstüne yaklaşınca çağırıyor.
+    // Elimizdeki en eski mesajın tarihinden geriye doğru bir sayfa daha çekip
+    // başa ekliyoruz.
+    func loadOlderMessages(conversationId: String) async {
+        guard hasMoreOlderMessages[conversationId] != false else { return }
+        guard let oldest = messages.first?.createdAt else { return }
+
+        do {
+            let page: [Message] = try await supabase
+                .from("messages")
+                .select()
+                .eq("conversation_id", value: conversationId)
+                .lt("created_at", value: oldest)
+                .order("created_at", ascending: false)
+                .limit(messagesPageSize)
+                .execute()
+                .value
+
+            hasMoreOlderMessages[conversationId] = page.count == messagesPageSize
+            guard !page.isEmpty else { return }
+
+            messages = Array(page.reversed()) + messages
+            updateMessagesCache(conversationId, messages)
+        } catch {
+            self.error = "Eski mesajlar yüklenemedi."
         }
     }
 
@@ -873,6 +929,7 @@ final class SocialService {
 
             conversations.removeAll { $0.id == conversation.id }
             messagesCache[conversation.id] = nil
+            hasMoreOlderMessages[conversation.id] = nil
             MessageCacheStore.shared.clear(conversation.id)
         } catch {
             self.error = "Sohbet silinemedi."

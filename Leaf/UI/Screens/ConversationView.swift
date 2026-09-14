@@ -24,6 +24,7 @@ struct ConversationView: View {
     // gerçek altına otomatik kaymıyordu. Liste ancak dolu veriyle ilk kez
     // oluştuğunda anchor doğru çalışıyor.
     @State private var isLoadingMessages = true
+    @State private var isLoadingOlderMessages = false
 
     private var currentUserId: String {
         auth.currentUser?.id.uuidString.lowercased() ?? ""
@@ -174,6 +175,15 @@ struct ConversationView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 4) {
+                    // Listenin başına yaklaşınca (bu satır görünür olunca) bir
+                    // sayfa daha eski mesaj çekiyoruz. Geçmişin gerçek başına
+                    // gelince (hasMoreMessages false) bu satır tamamen kalkıyor.
+                    if socialService.hasMoreMessages(for: conversationId) {
+                        ProgressView()
+                            .padding(.vertical, LeafSpacing.sm)
+                            .frame(maxWidth: .infinity)
+                            .onAppear { loadOlderMessages(proxy: proxy) }
+                    }
                     ForEach(socialService.messages) { message in
                         let isOwn = message.senderId == currentUserId
                         MessageBubble(
@@ -193,8 +203,30 @@ struct ConversationView: View {
             .onTapGesture {
                 isTextFieldFocused = false
             }
-            .onChange(of: socialService.messages.count) {
+            // Sadece gerçekten YENİ bir mesaj eklendiğinde (son mesajın id'si
+            // değiştiğinde) en alta kayıyoruz. loadOlderMessages üste eski
+            // mesaj eklediğinde son mesaj değişmediği için burası tetiklenmiyor
+            // — yoksa yukarı kaydırıp eski mesajları okurken sürekli en alta
+            // zıplardı.
+            .onChange(of: socialService.messages.last?.id) {
                 scrollToBottom(proxy: proxy)
+            }
+        }
+    }
+
+    // Yukarı kaydırınca eski mesajları getirir. Yeni içerik başa eklenince
+    // ScrollView'ın görünümü kaymasın diye, o an en üstteki mesajı işaretleyip
+    // veri geldikten sonra tekrar aynı mesaja (animasyonsuz) scroll ediyoruz —
+    // aksi halde kullanıcı okurken ekran aniden aşağı "zıplardı".
+    private func loadOlderMessages(proxy: ScrollViewProxy) {
+        guard !isLoadingOlderMessages else { return }
+        isLoadingOlderMessages = true
+        let anchorId = socialService.messages.first?.id
+        Task {
+            await socialService.loadOlderMessages(conversationId: conversationId)
+            isLoadingOlderMessages = false
+            if let anchorId {
+                proxy.scrollTo(anchorId, anchor: .top)
             }
         }
     }
