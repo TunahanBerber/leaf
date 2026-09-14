@@ -7,6 +7,7 @@ struct AddNoteView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var scheme
     @EnvironmentObject private var store: BookStore
+    @Environment(SocialService.self) private var socialService
 
     // kitabı ID ile takip ediyorum — struct olduğu için reference tutmak mümkün değil
     let bookId: String
@@ -15,6 +16,8 @@ struct AddNoteView: View {
     @State private var content = ""
     @State private var hasPageNumber = false
     @State private var pageNum = 1
+    @State private var shareAfterSave = false
+    @State private var showSharePicker = false
     @State private var isSaving = false
 
     // Sayfa aralığını sınırlamak için kitabın toplam sayfa sayısını okuyorum —
@@ -87,6 +90,14 @@ struct AddNoteView: View {
                                     .strokeBorder(LeafColors.borderSubtle(for: scheme), lineWidth: 0.5)
                             }
                         }
+
+                        // Mesajlaşma zaten 18 yaş altına kapalı.
+                        if socialService.isSocialAllowed {
+                            Toggle("Kaydettikten sonra bir sohbete gönder", isOn: $shareAfterSave.animation(LeafMotion.regular))
+                                .tint(LeafColors.accent(for: scheme))
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(LeafColors.textSecondary(for: scheme))
+                        }
                     }
                     .padding(.horizontal, LeafSpacing.md)
                     .padding(.top, LeafSpacing.md)
@@ -114,6 +125,14 @@ struct AddNoteView: View {
                     .disabled(title.isEmpty || content.isEmpty || isSaving)
                 }
             }
+            // "Kaydettikten sonra gönder" açıksa bu sheet'i biz değil,
+            // ShareBookToChatSheet kapanınca (onDismiss) kapatıyoruz —
+            // yoksa notu kaydedip hemen ekrandan atlar, gönderme fırsatı kalmazdı.
+            .sheet(isPresented: $showSharePicker, onDismiss: { dismiss() }) {
+                if let book {
+                    ShareBookToChatSheet(book: book, noteTitle: title, noteContent: content)
+                }
+            }
         }
     }
 
@@ -127,6 +146,10 @@ struct AddNoteView: View {
             pageNumber: hasPageNumber ? pageNum : nil,
             to: bookId
         )
-        dismiss()
+        if shareAfterSave {
+            showSharePicker = true
+        } else {
+            dismiss()
+        }
     }
 }

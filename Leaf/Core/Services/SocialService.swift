@@ -932,16 +932,27 @@ final class SocialService {
     // Kitap detayından "Sohbete Paylaş" ile çağrılıyor — güncel sayfa/ilerleme
     // dahil kitabın anlık halini bir kart olarak gönderiyor. caption boş
     // geçilebilir (kartın altına eklenen isteğe bağlı not).
-    func sendBookShare(conversationId: String, book: Book, caption: String) async {
+    func sendBookShare(
+        conversationId: String,
+        book: Book,
+        noteTitle: String? = nil,
+        noteContent: String? = nil,
+        caption: String
+    ) async {
         guard let userId = try? await supabase.auth.session.user.id.uuidString.lowercased() else { return }
 
-        let sharedBook: AnyJSON = .object([
+        var sharedBookFields: [String: AnyJSON] = [
             "title":            .string(book.title),
             "author":           .string(book.author),
             "cover_image_url":  book.coverImageUrl.map(AnyJSON.string) ?? .null,
             "current_page":     .double(Double(book.currentPage)),
             "total_pages":      .double(Double(book.totalPages))
-        ])
+        ]
+        if let noteTitle, let noteContent {
+            sharedBookFields["note_title"] = .string(noteTitle)
+            sharedBookFields["note_content"] = .string(noteContent)
+        }
+        let sharedBook: AnyJSON = .object(sharedBookFields)
 
         let entry: [String: AnyJSON] = [
             "conversation_id": .string(conversationId),

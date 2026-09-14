@@ -144,12 +144,18 @@ struct SharedBookPayload: Codable, Hashable {
     var coverImageUrl: String?
     var currentPage: Int
     var totalPages: Int
+    // İkisi de doluysa kartın altında bir not alıntısı gösteriliyor —
+    // "sadece ilerleme" paylaşımında ikisi de nil kalıyor.
+    var noteTitle: String?
+    var noteContent: String?
 
     enum CodingKeys: String, CodingKey {
         case title, author
         case coverImageUrl = "cover_image_url"
         case currentPage   = "current_page"
         case totalPages    = "total_pages"
+        case noteTitle     = "note_title"
+        case noteContent   = "note_content"
     }
 
     var progress: Double {

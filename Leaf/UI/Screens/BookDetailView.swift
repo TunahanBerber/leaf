@@ -325,6 +325,10 @@ struct ShareBookToChatSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(SocialService.self) private var socialService
     let book: Book
+    // AddNoteView'dan "kaydettikten sonra sohbete de gönder" ile çağrılınca
+    // dolu geliyor — kartın altına o notun alıntısı da ekleniyor.
+    var noteTitle: String? = nil
+    var noteContent: String? = nil
 
     @State private var selectedConversationId: String?
     @State private var caption = ""
@@ -418,6 +422,8 @@ struct ShareBookToChatSheet: View {
         await socialService.sendBookShare(
             conversationId: conversationId,
             book: book,
+            noteTitle: noteTitle,
+            noteContent: noteContent,
             caption: caption.trimmingCharacters(in: .whitespacesAndNewlines)
         )
         isSending = false
