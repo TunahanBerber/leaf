@@ -12,6 +12,7 @@ struct BookSearchSheet: View {
 
     @State private var query = ""
     @FocusState private var isSearchFocused: Bool
+    @State private var showRequestBook = false
 
     var body: some View {
         NavigationStack {
@@ -48,6 +49,9 @@ struct BookSearchSheet: View {
         }
         .onAppear {
             isSearchFocused = true
+        }
+        .sheet(isPresented: $showRequestBook) {
+            BookRequestSheet(initialTitle: query)
         }
     }
 
@@ -171,6 +175,17 @@ struct BookSearchSheet: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+
+            Button {
+                showRequestBook = true
+            } label: {
+                Label("Kitabı Bize Bildir", systemImage: "envelope")
+                    .font(.subheadline.weight(.semibold))
+            }
+            .buttonStyle(.bordered)
+            .tint(LeafColors.primary)
+            .padding(.top, 4)
+
             Spacer()
         }
         .padding()
@@ -299,6 +314,118 @@ struct CoverThumbnail: View {
             Image(systemName: "book.closed.fill")
                 .foregroundStyle(LeafColors.primary.opacity(0.5))
                 .font(.system(size: 20))
+        }
+    }
+}
+
+// MARK: - Kitap Bildirim Sheet'i
+
+// Kullanıcı aradığı kitabı bulamadığında kitap adı + yazar ismiyle bize
+// bildirebiliyor — book_requests tablosuna düşüyor, katalog eklerken referans
+// olarak kullanıyoruz.
+struct BookRequestSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var scheme
+    @EnvironmentObject private var store: BookStore
+
+    @State private var title: String
+    @State private var author = ""
+    @State private var isSending = false
+    @State private var didSend = false
+
+    init(initialTitle: String = "") {
+        _title = State(initialValue: initialTitle)
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                LeafGradientBackground()
+
+                if didSend {
+                    confirmationView
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: LeafSpacing.md) {
+                            Text("Aradığın kitabı bulamadık. Kitap adını ve yazarını bize bildir, kataloğa ekleyelim.")
+                                .font(.subheadline)
+                                .foregroundStyle(LeafColors.textSecondary(for: scheme))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                            LeafTextField(title: "Kitap Adı", text: $title, placeholder: "Kitabın adı")
+                            LeafTextField(title: "Yazar (opsiyonel)", text: $author, placeholder: "Yazarın adı")
+
+                            // Kullanıcı bunun anonim bir kutu olmadığını, hesabıyla
+                            // ilişkilendirildiğini ve kötüye kullanımın (spam, alakasız
+                            // içerik) sonucu olduğunu bilerek göndersin — hem caydırıcı
+                            // hem şeffaf.
+                            Text("Bu bildirim hesabınla ilişkilendirilir. Spam veya alakasız içerik gönderirsen hesabın kısıtlanabilir.")
+                                .font(.caption)
+                                .foregroundStyle(LeafColors.textTertiary(for: scheme))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                            if let errorMessage = store.error {
+                                Text(errorMessage)
+                                    .font(.caption)
+                                    .foregroundStyle(.red)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }
+                        .padding(.horizontal, LeafSpacing.md)
+                        .padding(.top, LeafSpacing.md)
+                    }
+                }
+            }
+            .navigationTitle("Kitabı Bildir")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(didSend ? "Kapat" : "İptal") { dismiss() }
+                        .foregroundStyle(LeafColors.textSecondary(for: scheme))
+                }
+                if !didSend {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button {
+                            Task { await send() }
+                        } label: {
+                            if isSending {
+                                ProgressView().tint(LeafColors.accent(for: scheme))
+                            } else {
+                                Text("Gönder").fontWeight(.semibold)
+                                    .foregroundStyle(LeafColors.accent(for: scheme))
+                            }
+                        }
+                        .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty || isSending)
+                    }
+                }
+            }
+        }
+    }
+
+    private var confirmationView: some View {
+        VStack(spacing: LeafSpacing.md) {
+            Spacer()
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 48))
+                .foregroundStyle(LeafColors.accent(for: scheme))
+            Text("Bildirdiğin için teşekkürler!")
+                .font(.headline)
+                .foregroundStyle(LeafColors.textPrimary(for: scheme))
+            Text("\"\(title)\" kataloğa eklenmesi için listeye alındı.")
+                .font(.subheadline)
+                .foregroundStyle(LeafColors.textSecondary(for: scheme))
+                .multilineTextAlignment(.center)
+            Spacer()
+        }
+        .padding()
+    }
+
+    private func send() async {
+        isSending = true
+        defer { isSending = false }
+        store.error = nil
+        if await store.requestBook(title: title, author: author) {
+            didSend = true
         }
     }
 }
