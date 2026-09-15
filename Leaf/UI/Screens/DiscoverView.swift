@@ -44,7 +44,7 @@ struct DiscoverView: View {
                 LeafGradientBackground()
 
                 Group {
-                    if socialService.isLoading {
+                    if socialService.isLoadingDiscover {
                         ProgressView()
                             .tint(LeafColors.accent(for: colorScheme))
                     } else if deck.isEmpty {

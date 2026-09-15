@@ -139,7 +139,16 @@ final class SocialService {
     // burayı da (ve MessageCacheStore ile diski de) güncel tutmalı.
     private var messagesCache: [String: [Message]] = [:]
     var blockedUsers: [UserProfile] = []
+    // Not: isLoading, createProfile/updateProfile gibi onboarding akışlarında
+    // paylaşılıyor (o ekranlarla Keşfet/Mesajlar hiç aynı anda görünmüyor,
+    // çakışma yok). discoverUsers ve fetchConversations ise KENDİ flag'lerini
+    // kullanıyor — Keşfet ve Mesajlar aynı TabView içinde birlikte mount
+    // edilmiş kaldığından, tek bir paylaşılan flag birinde tetiklenen
+    // fetch'in diğerinin tam ekran spinner'a düşüp kartlarını/listesini
+    // anlık kaybetmesine yol açıyordu.
     var isLoading = false
+    var isLoadingDiscover = false
+    var isLoadingConversations = false
     var error: String?
     var unreadCount: Int = 0
 
@@ -464,9 +473,9 @@ final class SocialService {
     // discover_users RPC'si zaten city_filter parametresi alıyor (Supabase
     // tarafında mevcut) — cityFilter verilmezse eskisi gibi filtresiz çalışır.
     func discoverUsers(cityFilter: String? = nil) async {
-        isLoading = true
+        isLoadingDiscover = true
         error = nil
-        defer { isLoading = false }
+        defer { isLoadingDiscover = false }
 
         do {
             let users: [UserProfile]
@@ -482,17 +491,15 @@ final class SocialService {
                     .value
             }
 
-            // birbirini engellemiş kullanıcılar keşifte görünmesin
-            var filtered = users
-            if let userId = try? await supabase.auth.session.user.id.uuidString.lowercased() {
-                let blocked = await blockedPairIds(currentId: userId)
-                filtered = users.filter { !blocked.contains($0.id) }
-            }
+            // Not: engellenen kullanıcılar zaten discover_users() RPC'si içinde
+            // (is_blocked_pair) sunucu tarafında filtreleniyor — burada ayrıca
+            // blocked_users tablosuna gidip tekrar filtrelemek gereksiz bir
+            // network round-trip'iydi, kaldırdık.
 
             // Fotoğraf durumlarını liste ekrana yansımadan ÖNCE önbelleğe alıyoruz —
             // yoksa kartlar önce boş avatarla render olup fotoğraf sonradan "patlıyor".
-            await prefetchPhotoReveals(for: filtered.map(\.id))
-            discoveredUsers = filtered
+            await prefetchPhotoReveals(for: users.map(\.id))
+            discoveredUsers = users
         } catch {
             self.error = "Kullanıcılar yüklenemedi."
             print("[SocialService] discoverUsers error: \(error)")
@@ -768,8 +775,8 @@ final class SocialService {
 
     func fetchConversations() async {
         guard let userId = try? await supabase.auth.session.user.id.uuidString.lowercased() else { return }
-        isLoading = true
-        defer { isLoading = false }
+        isLoadingConversations = true
+        defer { isLoadingConversations = false }
 
         do {
             var convs: [Conversation] = try await supabase

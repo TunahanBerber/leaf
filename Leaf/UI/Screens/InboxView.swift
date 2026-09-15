@@ -22,7 +22,7 @@ struct InboxView: View {
                     // veri yokken (ilk açılış) gösteriyoruz, aksi halde arka planda
                     // sessizce tazelenirken liste yerinde kalıyor.
                     if socialService.pendingRequests.isEmpty && socialService.conversations.isEmpty {
-                        if socialService.isLoading {
+                        if socialService.isLoadingConversations {
                             ProgressView()
                                 .tint(LeafColors.accent(for: colorScheme))
                         } else {
