@@ -499,17 +499,22 @@ final class SocialService {
         }
     }
 
-    // "Pas Geç" — record_swipe RPC'sine liked:false yazıyor. discover_users()
-    // zaten "bu kullanıcı için swipes'ta HERHANGİ bir kayıt var mı" diye
-    // bakıp varsa dışlıyor, yani bu tek satır o kişinin Keşfet'te bir daha
-    // hiç çıkmamasını (geri getirilene kadar) sağlıyor.
+    // Keşfet'te birini gizlemek — record_swipe RPC'sine liked:false yazıyor.
+    // discover_users() zaten "bu kullanıcı için swipes'ta HERHANGİ bir kayıt
+    // var mı" diye bakıp varsa dışlıyor, yani bu tek satır o kişinin
+    // Keşfet'te bir daha hiç çıkmamasını (geri getirilene kadar) sağlıyor.
+    // Tam profili (sadece id değil) alıyoruz ki başarılı olunca Gizlediklerim
+    // listesine ekstra bir ağ isteği atmadan direkt ekleyebilelim.
     @discardableResult
-    func recordPass(userId: String) async -> Bool {
-        let params: [String: AnyJSON] = ["target_id": .string(userId), "p_liked": .bool(false)]
+    func recordPass(_ user: UserProfile) async -> Bool {
+        let params: [String: AnyJSON] = ["target_id": .string(user.id), "p_liked": .bool(false)]
         do {
             try await supabase
                 .rpc("record_swipe", params: params)
                 .execute()
+            if !passedUsers.contains(where: { $0.id == user.id }) {
+                passedUsers.insert(user, at: 0)
+            }
             return true
         } catch {
             print("[SocialService] recordPass error: \(error)")

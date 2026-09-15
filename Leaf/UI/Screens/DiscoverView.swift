@@ -11,6 +11,10 @@ struct DiscoverView: View {
     @State private var showCityFilter = false
     @State private var showPassedUsers = false
     @State private var cityFilter: String?
+    // Gizlediklerim panelinde gerçekten "Geri Getir" denip denmediğini takip
+    // ediyoruz — sadece açıp kapatmak deste'yi yeniden çekmeye değmez,
+    // gereksiz bir istek olurdu. Sadece bir şey değiştiyse tazeliyoruz.
+    @State private var passedListChanged = false
 
     // zaten sohbeti olan kullanıcılar
     private var matchedUserIds: Set<String> {
@@ -84,15 +88,16 @@ struct DiscoverView: View {
             .sheet(isPresented: $showCityFilter) {
                 CityPickerSheet(selectedCity: $cityFilter)
             }
-            // Sheet'te biri "Geri Getir" dediyse deste bunu yansıtmalı — o kişi
-            // discoveredUsers'a o an eklenmez (zaten çekilmiş listede yok),
-            // sadece bir sonraki discoverUsers() çağrısında geri gelir. excludedIds'i
-            // de temizliyoruz ki bu oturumda pas geçilmiş olsa bile önü açılsın.
+            // Sadece gerçekten "Geri Getir" denildiyse deste'yi yeniden çekiyoruz
+            // (o kişi discover_users()'ta ancak swipes kaydı silindikten SONRA
+            // tekrar görünür oluyor). Sırf açıp kapatmak bir istek atmıyor.
             .sheet(isPresented: $showPassedUsers, onDismiss: {
+                guard passedListChanged else { return }
+                passedListChanged = false
                 excludedIds.removeAll()
                 Task { await socialService.discoverUsers(cityFilter: cityFilter) }
             }) {
-                PassedUsersSheet()
+                PassedUsersSheet(onRestore: { passedListChanged = true })
             }
         }
     }
@@ -129,13 +134,13 @@ struct DiscoverView: View {
 
     // MARK: - İstekler (gönderdiklerim)
 
-    // MARK: - Geçtiklerim
+    // MARK: - Gizlediklerim
 
     private var passedUsersButton: some View {
         Button {
             showPassedUsers = true
         } label: {
-            Image(systemName: "arrow.uturn.left.circle")
+            Image(systemName: "eye.slash.circle")
                 .foregroundStyle(LeafColors.accent(for: colorScheme))
                 .overlay(alignment: .topTrailing) {
                     if !socialService.passedUsers.isEmpty {
@@ -232,8 +237,10 @@ struct DiscoverView: View {
         // Eskiden sadece bu oturumda (bellekte) geçerliydi — kapatıp açınca
         // aynı kişi tekrar karşına çıkıyordu. Artık kalıcı: record_swipe
         // (liked:false) sayesinde geri getirmediğin sürece bir daha hiç
-        // çıkmıyor, PassedUsersSheet'ten istediğin zaman geri getirebiliyorsun.
-        Task { await socialService.recordPass(userId: user.id) }
+        // çıkmıyor, GizlediklerimSheet'ten istediğin zaman geri getirebiliyorsun.
+        // recordPass tüm profili alıyor ki Gizlediklerim listesine ekstra bir
+        // ağ isteği atmadan, doğrudan bellekte ekleyebilsin.
+        Task { await socialService.recordPass(user) }
     }
 
     private func approve() {
@@ -471,15 +478,21 @@ struct SentRequestRow: View {
     }
 }
 
-// MARK: - Geçtiklerim (Pas Geçilenler) Sheet'i
+// MARK: - Gizlediklerim Sheet'i
 
-// "Pas Geç" artık kalıcı (swipes tablosunda) — bu panel geçtiğin herkesi
-// her zaman görebilmen ve istediğini "Geri Getir" ile tekrar Keşfet'e
-// döndürebilmen için var. Sheet kapanınca DiscoverView desteyi tazeliyor.
+// Keşfet'te birini gizlemek (eski adıyla "pas geç") artık kalıcı (swipes
+// tablosunda) — bu panel gizlediğin herkesi her zaman görebilmen ve
+// istediğini "Geri Getir" ile tekrar Keşfet'e ekleyebilmen için var.
+// socialService.passedUsers zaten bellekte güncel tutuluyor (gizleyince
+// ekleniyor, geri getirince çıkarılıyor) — bu sheet açılırken/kapanırken
+// AYRICA bir ağ isteği atmıyoruz, sadece elimizdeki veriyi gösteriyoruz.
+// Bir şey değiştiyse (en az bir "Geri Getir") DiscoverView bunu dismiss'te
+// kendi başına fark edip deste'yi tazeliyor.
 struct PassedUsersSheet: View {
     @Environment(SocialService.self) var socialService
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.dismiss) var dismiss
+    let onRestore: () -> Void
 
     var body: some View {
         NavigationStack {
@@ -492,18 +505,16 @@ struct PassedUsersSheet: View {
                     passedList
                 }
             }
-            .navigationTitle("Geçtiklerim")
+            .navigationTitle("Gizlediklerim")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Kapat") { dismiss() }
                 }
             }
-            // DiscoverView'ın kendi .task'ı sadece ilk açılışta bir kez
-            // fetchPassedUsers() çağırıyor — bu sheet'i her açtığında (X'e
-            // bastıktan sonra bile) güncel listeyi görebilmen için burada da
-            // tazeliyoruz, pull-to-refresh'e bağlı kalmadan.
-            .task { await socialService.fetchPassedUsers() }
+            // Parmakla aşağı çekip elle yenilemek istersen (ör. başka bir
+            // cihazdan gizlemiştin) diye duruyor — ekran her açıldığında
+            // otomatik tetiklenmiyor.
             .refreshable { await socialService.fetchPassedUsers() }
         }
     }
@@ -511,7 +522,7 @@ struct PassedUsersSheet: View {
     private var passedList: some View {
         List {
             ForEach(socialService.passedUsers) { user in
-                PassedUserRow(user: user)
+                PassedUserRow(user: user, onRestore: onRestore)
                     .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
@@ -523,13 +534,13 @@ struct PassedUsersSheet: View {
 
     private var passedEmptyState: some View {
         VStack(spacing: LeafSpacing.md) {
-            Image(systemName: "arrow.uturn.left.circle")
+            Image(systemName: "eye.slash.circle")
                 .font(.system(size: 40))
                 .foregroundStyle(LeafColors.textTertiary(for: colorScheme))
-            Text("Henüz kimseyi geçmedin")
+            Text("Henüz kimseyi gizlemedin")
                 .font(.headline)
                 .foregroundStyle(LeafColors.textPrimary(for: colorScheme))
-            Text("Keşfet'te pas geçtiklerin\nburada birikecek.")
+            Text("Keşfet'te uygun bulmadıklarını\ngizleyebilirsin, listen burada birikir.")
                 .font(.subheadline)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(LeafColors.textSecondary(for: colorScheme))
@@ -538,10 +549,11 @@ struct PassedUsersSheet: View {
     }
 }
 
-// MARK: - Geçilen Kullanıcı Satırı
+// MARK: - Gizlenen Kullanıcı Satırı
 
 struct PassedUserRow: View {
     let user: UserProfile
+    let onRestore: () -> Void
     @Environment(SocialService.self) var socialService
     @Environment(\.colorScheme) var colorScheme
     @State private var isUndoing = false
@@ -551,10 +563,14 @@ struct PassedUserRow: View {
         HStack(spacing: LeafSpacing.md) {
             RevealablePhotoView(userId: user.id, size: 48)
 
+            // maxWidth: .infinity ile esnek alanı BU alıyor, buton hep kendi
+            // doğal (tek satır) boyutunda kalıyor — isim uzunluğuna göre bazı
+            // satırlarda buton metni sarılıp bazılarında sarılmıyordu.
             VStack(alignment: .leading, spacing: LeafSpacing.xxs) {
                 Text(user.username)
                     .font(.headline)
                     .foregroundStyle(LeafColors.textPrimary(for: colorScheme))
+                    .lineLimit(1)
                 if let bio = user.bio, !bio.isEmpty {
                     Text(bio)
                         .font(.caption)
@@ -562,32 +578,39 @@ struct PassedUserRow: View {
                         .lineLimit(1)
                 }
             }
-
-            Spacer()
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             if didUndo {
                 Label("Geri geldi", systemImage: "checkmark")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(LeafColors.accent(for: colorScheme))
+                    .lineLimit(1)
+                    .fixedSize()
             } else {
                 Button {
                     isUndoing = true
                     Task {
                         let ok = await socialService.undoPass(userId: user.id)
                         isUndoing = false
-                        if ok { didUndo = true }
+                        if ok {
+                            didUndo = true
+                            onRestore()
+                        }
                     }
                 } label: {
                     if isUndoing {
                         ProgressView().tint(LeafColors.accent(for: colorScheme))
                     } else {
                         Label("Geri Getir", systemImage: "arrow.uturn.left")
+                            .labelStyle(.titleAndIcon)
                             .font(.caption.weight(.semibold))
+                            .lineLimit(1)
                     }
                 }
                 .buttonStyle(.bordered)
                 .tint(LeafColors.accent(for: colorScheme))
                 .disabled(isUndoing)
+                .fixedSize()
             }
         }
         .padding(LeafSpacing.md)
