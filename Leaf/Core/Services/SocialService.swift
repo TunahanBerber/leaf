@@ -125,6 +125,9 @@ final class SocialService {
     private var photoRevealCachedAt: [String: Date] = [:]
     private let photoRevealFreshWindow: TimeInterval = 270
     var discoveredUsers: [UserProfile] = []
+    // "Pas Geç" dediklerim — swipes tablosunda (liked=false) kalıcı, istersen
+    // PassedUsersSheet'ten geri getirip tekrar Keşfet'e dönmelerini sağlıyorsun.
+    var passedUsers: [UserProfile] = []
     var conversations: [Conversation] = []
     var pendingRequests: [ConversationRequest] = []  // gelen bekleyen istekler
     var sentRequests: [ConversationRequest] = []     // benim gönderdiğim, henüz yanıtlanmamış istekler
@@ -493,6 +496,94 @@ final class SocialService {
         } catch {
             self.error = "Kullanıcılar yüklenemedi."
             print("[SocialService] discoverUsers error: \(error)")
+        }
+    }
+
+    // Keşfet'te birini gizlemek — record_swipe RPC'sine liked:false yazıyor.
+    // discover_users() zaten "bu kullanıcı için swipes'ta HERHANGİ bir kayıt
+    // var mı" diye bakıp varsa dışlıyor, yani bu tek satır o kişinin
+    // Keşfet'te bir daha hiç çıkmamasını (geri getirilene kadar) sağlıyor.
+    // Tam profili (sadece id değil) alıyoruz ki başarılı olunca Gizlediklerim
+    // listesine ekstra bir ağ isteği atmadan direkt ekleyebilelim.
+    @discardableResult
+    func recordPass(_ user: UserProfile) async -> Bool {
+        let params: [String: AnyJSON] = ["target_id": .string(user.id), "p_liked": .bool(false)]
+        do {
+            try await supabase
+                .rpc("record_swipe", params: params)
+                .execute()
+            if !passedUsers.contains(where: { $0.id == user.id }) {
+                passedUsers.insert(user, at: 0)
+            }
+            return true
+        } catch {
+            print("[SocialService] recordPass error: \(error)")
+            return false
+        }
+    }
+
+    // Ayarlar'daki "Engellenen Kullanıcılar" ile aynı desen — pas geçtiklerimi
+    // profil bilgileriyle birlikte çekiyor.
+    func fetchPassedUsers() async {
+        guard let currentId = try? await supabase.auth.session.user.id.uuidString.lowercased() else { return }
+
+        struct SwipeRow: Codable {
+            var swipedId: String
+            enum CodingKeys: String, CodingKey { case swipedId = "swiped_id" }
+        }
+
+        do {
+            let rows: [SwipeRow] = try await supabase
+                .from("swipes")
+                .select()
+                .eq("swiper_id", value: currentId)
+                .eq("liked", value: false)
+                .order("created_at", ascending: false)
+                .execute()
+                .value
+
+            let ids = rows.map(\.swipedId)
+            guard !ids.isEmpty else {
+                passedUsers = []
+                return
+            }
+
+            let profiles: [ProfileRecord] = try await supabase
+                .from("profiles")
+                .select()
+                .in("id", values: ids)
+                .execute()
+                .value
+
+            await prefetchPhotoReveals(for: ids)
+            // swipes'tan gelen (en yeni pas geçilen en üstte) sırayı koruyoruz —
+            // profiles sorgusu bu sırayı garanti etmiyor.
+            let profileMap = Dictionary(uniqueKeysWithValues: profiles.map { ($0.id, $0.toUserProfile()) })
+            passedUsers = ids.compactMap { profileMap[$0] }
+        } catch {
+            self.error = "Geçilen kullanıcılar yüklenemedi."
+        }
+    }
+
+    // Geri getir — swipes kaydını siliyor, kişi bir sonraki discoverUsers()
+    // çağrısında Keşfet'te tekrar görünür oluyor.
+    @discardableResult
+    func undoPass(userId: String) async -> Bool {
+        guard let currentId = try? await supabase.auth.session.user.id.uuidString.lowercased() else { return false }
+
+        do {
+            try await supabase
+                .from("swipes")
+                .delete()
+                .eq("swiper_id", value: currentId)
+                .eq("swiped_id", value: userId)
+                .execute()
+
+            passedUsers.removeAll { $0.id == userId }
+            return true
+        } catch {
+            self.error = "Geri getirilemedi."
+            return false
         }
     }
 
