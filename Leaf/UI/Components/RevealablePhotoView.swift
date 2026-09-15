@@ -154,6 +154,12 @@ struct RevealablePhotoView: View {
     // Görsel byte'larını path'e göre önbellekten okur; yoksa signed URL'den bir kez
     // indirip path anahtarıyla kaydeder — imza her yenilendiğinde path aynı kaldığı
     // için bir daha asla yeniden inmiyor (bkz. ProfilePhotoCacheStore).
+    //
+    // Tek seferlik network hıçkırığı (zayıf wifi/mobil veri) eskiden kalıcı boş
+    // silüete yol açıyordu: indirme bir kere başarısız olunca hiçbir retry yoktu,
+    // .task(id: derivedPath) da stage değişmediği sürece bir daha tetiklenmiyordu.
+    // Burada birkaç kez, kısa aralıklarla deniyoruz — görünüm kaybolursa .task zaten
+    // iptal olur, sonsuz döngü riski yok.
     private func loadImageIfNeeded() async {
         guard let path = derivedPath else {
             loadedImage = nil
@@ -164,9 +170,19 @@ struct RevealablePhotoView: View {
             return
         }
         guard let url = effectiveReveal.url else { return }
-        guard let (data, _) = try? await URLSession.shared.data(from: url) else { return }
-        ProfilePhotoCacheStore.shared.set(path, data: data)
-        loadedImage = UIImage(data: data)
+
+        let retryDelaysNanoseconds: [UInt64] = [0, 500_000_000, 1_500_000_000]
+        for delay in retryDelaysNanoseconds {
+            if delay > 0 { try? await Task.sleep(nanoseconds: delay) }
+            if let (data, response) = try? await URLSession.shared.data(from: url),
+               (response as? HTTPURLResponse)?.statusCode == 200,
+               let image = UIImage(data: data) {
+                ProfilePhotoCacheStore.shared.set(path, data: data)
+                loadedImage = image
+                return
+            }
+        }
+        print("[RevealablePhotoView] fotoğraf indirilemedi (path: \(path)) — \(retryDelaysNanoseconds.count) deneme sonunda vazgeçildi")
     }
 }
 
