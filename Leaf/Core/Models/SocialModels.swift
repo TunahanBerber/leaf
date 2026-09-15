@@ -148,14 +148,19 @@ struct SharedBookPayload: Codable, Hashable {
     // "sadece ilerleme" paylaşımında ikisi de nil kalıyor.
     var noteTitle: String?
     var noteContent: String?
+    // Notun kendi sayfa numarası — book.currentPage'den (o an kaçıncı
+    // sayfadasın) farklı bir şey: not hangi sayfada tutulduysa o. BookNote.pageNumber
+    // opsiyonel olduğu için (not sayfaya bağlanmamış olabilir) bu da opsiyonel.
+    var notePageNumber: Int?
 
     enum CodingKeys: String, CodingKey {
         case title, author
-        case coverImageUrl = "cover_image_url"
-        case currentPage   = "current_page"
-        case totalPages    = "total_pages"
-        case noteTitle     = "note_title"
-        case noteContent   = "note_content"
+        case coverImageUrl  = "cover_image_url"
+        case currentPage    = "current_page"
+        case totalPages     = "total_pages"
+        case noteTitle      = "note_title"
+        case noteContent    = "note_content"
+        case notePageNumber = "note_page_number"
     }
 
     var progress: Double {

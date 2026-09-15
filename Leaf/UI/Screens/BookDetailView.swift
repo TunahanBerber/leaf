@@ -329,6 +329,7 @@ struct ShareBookToChatSheet: View {
     // dolu geliyor — kartın altına o notun alıntısı da ekleniyor.
     var noteTitle: String? = nil
     var noteContent: String? = nil
+    var notePageNumber: Int? = nil
 
     @State private var selectedConversationId: String?
     @State private var caption = ""
@@ -424,6 +425,7 @@ struct ShareBookToChatSheet: View {
             book: book,
             noteTitle: noteTitle,
             noteContent: noteContent,
+            notePageNumber: notePageNumber,
             caption: caption.trimmingCharacters(in: .whitespacesAndNewlines)
         )
         isSending = false

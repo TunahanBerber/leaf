@@ -130,7 +130,12 @@ struct AddNoteView: View {
             // yoksa notu kaydedip hemen ekrandan atlar, gönderme fırsatı kalmazdı.
             .sheet(isPresented: $showSharePicker, onDismiss: { dismiss() }) {
                 if let book {
-                    ShareBookToChatSheet(book: book, noteTitle: title, noteContent: content)
+                    ShareBookToChatSheet(
+                        book: book,
+                        noteTitle: title,
+                        noteContent: content,
+                        notePageNumber: hasPageNumber ? pageNum : nil
+                    )
                 }
             }
         }

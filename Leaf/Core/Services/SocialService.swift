@@ -937,6 +937,7 @@ final class SocialService {
         book: Book,
         noteTitle: String? = nil,
         noteContent: String? = nil,
+        notePageNumber: Int? = nil,
         caption: String
     ) async {
         guard let userId = try? await supabase.auth.session.user.id.uuidString.lowercased() else { return }
@@ -951,6 +952,9 @@ final class SocialService {
         if let noteTitle, let noteContent {
             sharedBookFields["note_title"] = .string(noteTitle)
             sharedBookFields["note_content"] = .string(noteContent)
+        }
+        if let notePageNumber {
+            sharedBookFields["note_page_number"] = .double(Double(notePageNumber))
         }
         let sharedBook: AnyJSON = .object(sharedBookFields)
 
