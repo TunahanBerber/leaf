@@ -7,8 +7,8 @@ defineProps<{
 
 const emit = defineEmits<{
   (e: 'status-change', payload: { id: string; status: ReportStatus }): void;
-  (e: 'ban', userId: string): void;
-  (e: 'signout', userId: string): void;
+  (e: 'ban', payload: { userId: string; username: string }): void;
+  (e: 'signout', payload: { userId: string; username: string }): void;
 }>();
 
 function handleStatusChange(event: Event, id: string): void {
@@ -51,8 +51,18 @@ function formatDate(iso: string): string {
         <option value="reviewed">İncelendi</option>
         <option value="resolved">Çözüldü</option>
       </select>
-      <button class="btn-danger" @click="$emit('ban', report.reported_id)">Hesabı Askıya Al</button>
-      <button class="btn-warn" @click="$emit('signout', report.reported_id)">Oturumları Sonlandır</button>
+      <button
+        class="btn-danger"
+        @click="$emit('ban', { userId: report.reported_id, username: report.reportedUsername })"
+      >
+        Hesabı Askıya Al
+      </button>
+      <button
+        class="btn-warn"
+        @click="$emit('signout', { userId: report.reported_id, username: report.reportedUsername })"
+      >
+        Oturumları Sonlandır
+      </button>
     </div>
   </div>
 </template>
