@@ -26,7 +26,9 @@ final class PushNotificationService: NSObject, ObservableObject {
             let granted = (try? await UNUserNotificationCenter.current()
                 .requestAuthorization(options: [.alert, .sound, .badge])) ?? false
             isPermissionGranted = granted
+            #if DEBUG
             print("[Push] İzin durumu: \(granted)")
+            #endif
             if granted {
                 UIApplication.shared.registerForRemoteNotifications()
             }
@@ -51,13 +53,19 @@ final class PushNotificationService: NSObject, ObservableObject {
 
     func registerToken(_ tokenData: Data) async {
         let token = tokenData.map { String(format: "%02x", $0) }.joined()
+        #if DEBUG
         print("[Push] APNs token alındı: \(token.prefix(20))...")
+        #endif
 
         guard let userId = try? await supabase.auth.session.user.id.uuidString.lowercased() else {
+            #if DEBUG
             print("[Push] Oturum bulunamadı, token kaydedilemedi")
+            #endif
             return
         }
+        #if DEBUG
         print("[Push] Token Supabase'e yazılıyor — user: \(userId.prefix(8))...")
+        #endif
 
         do {
             try await supabase
@@ -71,9 +79,13 @@ final class PushNotificationService: NSObject, ObservableObject {
                     onConflict: "user_id"
                 )
                 .execute()
+            #if DEBUG
             print("[Push] Token başarıyla kaydedildi")
+            #endif
         } catch {
+            #if DEBUG
             print("[Push] Token kaydedilemedi: \(error)")
+            #endif
         }
     }
 
