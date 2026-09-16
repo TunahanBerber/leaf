@@ -104,6 +104,22 @@ Deno.serve(async (req) => {
     }
     const uid = userData.user.id;
 
+    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    // Kullanicilar profil fotografini sik degistirmez; bu limit normal kullanimi
+    // etkilemeden art arda upload/CPU tuketimi (decode+blur) istismarini engelliyor.
+    const { data: withinLimit } = await admin.rpc("check_rate_limit", {
+      p_user_id: uid,
+      p_action: "process_profile_photo",
+      p_max_count: 5,
+      p_window_seconds: 60,
+    });
+    if (withinLimit === false) {
+      return json({ error: "Çok fazla istek, birazdan tekrar deneyin" }, 429);
+    }
+
     const rawBytes = new Uint8Array(await req.arrayBuffer());
     if (rawBytes.length === 0) {
       return json({ error: "Boş görsel" }, 400);
@@ -121,10 +137,6 @@ Deno.serve(async (req) => {
     const blurredImage = await Image.decode(originalJpeg);
     boxBlur(blurredImage, BLUR_RADIUS);
     const blurredJpeg = await blurredImage.encodeJPEG(80);
-
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
 
     const originalPath = `${uid}/original.jpg`;
     const blurredPath = `${uid}/blurred.jpg`;
