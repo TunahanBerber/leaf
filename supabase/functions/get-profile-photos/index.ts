@@ -36,6 +36,7 @@ Deno.serve(async (req) => {
     if (userErr || !userData.user) {
       return json({ error: "Yetkisiz" }, 401);
     }
+    const callerId = userData.user.id;
 
     const { target_user_ids: targetIds } = (await req.json()) as { target_user_ids?: string[] };
     if (!targetIds || targetIds.length === 0) {
@@ -45,6 +46,18 @@ Deno.serve(async (req) => {
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
+
+    // Discover/mesaj listesi gibi toplu yerlerde normalde saniyede birkac kez
+    // cagriliyor; bu limit sadece otomatik/scriptli enumeration'i engelliyor.
+    const { data: withinLimit } = await admin.rpc("check_rate_limit", {
+      p_user_id: callerId,
+      p_action: "get_profile_photos",
+      p_max_count: 20,
+      p_window_seconds: 10,
+    });
+    if (withinLimit === false) {
+      return json({ error: "Çok fazla istek, birazdan tekrar deneyin" }, 429);
+    }
 
     // Stage hesaplaması auth.uid()'e bağlı (RPC içinde) — çağıranın kimliğini
     // service-role client'a JWT ile taşımamız gerekiyor, o yüzden burada da

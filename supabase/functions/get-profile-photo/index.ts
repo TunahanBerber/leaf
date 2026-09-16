@@ -47,6 +47,18 @@ Deno.serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
+    // Normal kullanimi (kart acma, mesajlasma) hic etkilemeyecek kadar genis bir
+    // limit; amac scriptli reveal-stage enumeration'i engellemek.
+    const { data: withinLimit } = await admin.rpc("check_rate_limit", {
+      p_user_id: callerId,
+      p_action: "get_profile_photo",
+      p_max_count: 30,
+      p_window_seconds: 10,
+    });
+    if (withinLimit === false) {
+      return json({ error: "Çok fazla istek, birazdan tekrar deneyin" }, 429);
+    }
+
     const { data: targetProfile } = await admin
       .from("profiles")
       .select("photo_original_path, photo_blurred_path")
