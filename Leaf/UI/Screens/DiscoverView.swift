@@ -144,13 +144,7 @@ struct DiscoverView: View {
                 .foregroundStyle(LeafColors.accent(for: colorScheme))
                 .overlay(alignment: .topTrailing) {
                     if !socialService.passedUsers.isEmpty {
-                        Text("\(socialService.passedUsers.count)")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(.white)
-                            .padding(4)
-                            .background(Color.gray)
-                            .clipShape(Circle())
-                            .offset(x: 9, y: -9)
+                        CountBadge(count: socialService.passedUsers.count, color: .gray)
                     }
                 }
                 .frame(width: 44, height: 44)
@@ -166,13 +160,7 @@ struct DiscoverView: View {
                 .foregroundStyle(LeafColors.accent(for: colorScheme))
                 .overlay(alignment: .topTrailing) {
                     if !socialService.sentRequests.isEmpty {
-                        Text("\(socialService.sentRequests.count)")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(.white)
-                            .padding(4)
-                            .background(Color.red)
-                            .clipShape(Circle())
-                            .offset(x: 9, y: -9)
+                        CountBadge(count: socialService.sentRequests.count, color: .red)
                     }
                 }
                 .frame(width: 44, height: 44)
@@ -620,5 +608,28 @@ struct PassedUserRow: View {
             RoundedRectangle(cornerRadius: LeafRadius.large)
                 .stroke(LeafColors.borderSubtle(for: colorScheme))
         }
+    }
+}
+
+// MARK: - Sayaç Rozeti
+
+// passedUsersButton/sentRequestsButton gibi toolbar ikonlarındaki bildirim
+// sayıları için ortak rozet. iOS, topBarTrailing item'larını tek bir kapsülde
+// grupluyor ve kapsülün boyutunu item'ların offset'siz gerçek boyutuna göre
+// hesaplıyor — eski (x:9, y:-9) offset'i rozeti bu kapsülün dışına taşırıyordu.
+// Burada offset'i belirgin şekilde küçültüp Circle yerine Capsule kullanıyoruz
+// ki 2 haneli sayılarda da rozet sıkışıp deforme olmadan kapsülün içinde kalsın.
+private struct CountBadge: View {
+    let count: Int
+    let color: Color
+
+    var body: some View {
+        Text("\(count)")
+            .font(.system(size: 10, weight: .bold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 4)
+            .frame(minWidth: 16, minHeight: 16)
+            .background(color, in: Capsule())
+            .offset(x: 5, y: -1)
     }
 }
