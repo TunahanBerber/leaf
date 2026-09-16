@@ -4,6 +4,7 @@ import { useUsersStore } from '@/stores/usersStore';
 import { useToast } from '@/composables/useToast';
 import { edgeApi } from '@/api/api';
 import type { AdminUser } from '@/types/userTypes';
+import BaseModal from '@/components/BaseModal.vue';
 
 const PAGE_SIZE = 10;
 
@@ -65,23 +66,65 @@ function formatDate(iso: string | null): string {
   return new Date(iso).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-async function handleBan(user: AdminUser): Promise<void> {
-  await store.ban(user.id);
-  toast.success('Kullanıcı askıya alındı');
+type PendingAction = { type: 'ban' | 'unban' | 'signout'; user: AdminUser };
+const pendingAction = ref<PendingAction | null>(null);
+
+const confirmCopy = computed(() => {
+  switch (pendingAction.value?.type) {
+    case 'ban':
+      return {
+        title: 'Kullanıcıyı askıya al',
+        body: `${pendingAction.value.user.username} askıya alınacak. Devam edilsin mi?`,
+        confirmLabel: 'Askıya Al',
+      };
+    case 'unban':
+      return {
+        title: 'Askıyı kaldır',
+        body: `${pendingAction.value.user.username} kullanıcısının askısı kaldırılacak. Devam edilsin mi?`,
+        confirmLabel: 'Askıyı Kaldır',
+      };
+    case 'signout':
+      return {
+        title: 'Oturumları sonlandır',
+        body: `${pendingAction.value.user.username} kullanıcısının tüm aktif oturumları sonlandırılacak. Devam edilsin mi?`,
+        confirmLabel: 'Sonlandır',
+      };
+    default:
+      return null;
+  }
+});
+
+function requestBan(user: AdminUser): void {
+  pendingAction.value = { type: 'ban', user };
 }
 
-async function handleUnban(user: AdminUser): Promise<void> {
-  await store.unban(user.id);
-  toast.success('Askı kaldırıldı');
+function requestUnban(user: AdminUser): void {
+  pendingAction.value = { type: 'unban', user };
 }
 
-async function handleSignOut(user: AdminUser): Promise<void> {
-  try {
-    await edgeApi.signOutUser(user.id);
-    toast.success('Oturumlar sonlandırıldı');
-  } catch (e: unknown) {
-    console.error('signOutUser hatası:', e);
-    toast.error('Oturumlar sonlandırılamadı');
+function requestSignOut(user: AdminUser): void {
+  pendingAction.value = { type: 'signout', user };
+}
+
+async function confirmPendingAction(): Promise<void> {
+  const action = pendingAction.value;
+  if (!action) return;
+  pendingAction.value = null;
+
+  if (action.type === 'ban') {
+    await store.ban(action.user.id);
+    toast.success('Kullanıcı askıya alındı');
+  } else if (action.type === 'unban') {
+    await store.unban(action.user.id);
+    toast.success('Askı kaldırıldı');
+  } else {
+    try {
+      await edgeApi.signOutUser(action.user.id);
+      toast.success('Oturumlar sonlandırıldı');
+    } catch (e: unknown) {
+      console.error('signOutUser hatası:', e);
+      toast.error('Oturumlar sonlandırılamadı');
+    }
   }
 }
 
@@ -146,14 +189,14 @@ onMounted(() => {
                   v-if="user.isBanned"
                   class="icon-btn icon-btn-accent"
                   title="Askıyı kaldır"
-                  @click="handleUnban(user)"
+                  @click="requestUnban(user)"
                 >
                   ✓
                 </button>
-                <button v-else class="icon-btn icon-btn-danger" title="Askıya al" @click="handleBan(user)">
+                <button v-else class="icon-btn icon-btn-danger" title="Askıya al" @click="requestBan(user)">
                   ⛔
                 </button>
-                <button class="icon-btn" title="Oturumları sonlandır" @click="handleSignOut(user)">↩</button>
+                <button class="icon-btn" title="Oturumları sonlandır" @click="requestSignOut(user)">↩</button>
               </div>
             </td>
           </tr>
@@ -169,6 +212,15 @@ onMounted(() => {
         <button class="btn-ghost" :disabled="page === totalPages" @click="goToPage(page + 1)">Sonraki</button>
       </div>
     </div>
+
+    <BaseModal v-if="confirmCopy" @cancel="pendingAction = null">
+      <template #header>{{ confirmCopy.title }}</template>
+      <p>{{ confirmCopy.body }}</p>
+      <template #footer>
+        <button class="btn-ghost" @click="pendingAction = null">İptal</button>
+        <button class="btn-danger" @click="confirmPendingAction">{{ confirmCopy.confirmLabel }}</button>
+      </template>
+    </BaseModal>
   </div>
 </template>
 

@@ -4,6 +4,7 @@ import { useReportsStore } from '@/stores/reportsStore';
 import { useToast } from '@/composables/useToast';
 import { edgeApi } from '@/api/api';
 import ReportCard from '@/components/ReportCard.vue';
+import BaseModal from '@/components/BaseModal.vue';
 import type { ReportStatus } from '@/types/reportTypes';
 
 const store = useReportsStore();
@@ -27,18 +28,48 @@ async function handleStatusChange(payload: { id: string; status: ReportStatus })
   toast.success('Durum güncellendi');
 }
 
-async function handleBan(userId: string): Promise<void> {
-  await store.banReportedUser(userId);
-  toast.success('Kullanıcı askıya alındı');
+type PendingAction = { type: 'ban' | 'signout'; userId: string; username: string };
+const pendingAction = ref<PendingAction | null>(null);
+
+const confirmCopy = computed(() => {
+  if (!pendingAction.value) return null;
+  return pendingAction.value.type === 'ban'
+    ? {
+        title: 'Kullanıcıyı askıya al',
+        body: `${pendingAction.value.username} askıya alınacak. Devam edilsin mi?`,
+        confirmLabel: 'Askıya Al',
+      }
+    : {
+        title: 'Oturumları sonlandır',
+        body: `${pendingAction.value.username} kullanıcısının tüm aktif oturumları sonlandırılacak. Devam edilsin mi?`,
+        confirmLabel: 'Sonlandır',
+      };
+});
+
+function handleBan(payload: { userId: string; username: string }): void {
+  pendingAction.value = { type: 'ban', ...payload };
 }
 
-async function handleSignOut(userId: string): Promise<void> {
-  try {
-    await edgeApi.signOutUser(userId);
-    toast.success('Oturumlar sonlandırıldı');
-  } catch (e: unknown) {
-    console.error('signOutUser hatası:', e);
-    toast.error('Oturumlar sonlandırılamadı');
+function handleSignOut(payload: { userId: string; username: string }): void {
+  pendingAction.value = { type: 'signout', ...payload };
+}
+
+async function confirmPendingAction(): Promise<void> {
+  const action = pendingAction.value;
+  if (!action) return;
+  pendingAction.value = null;
+
+  if (action.type === 'ban') {
+    await store.banReportedUser(action.userId);
+    toast.success('Kullanıcı askıya alındı');
+  } else {
+    try {
+      await edgeApi.signOutUser(action.userId);
+      toast.success('Oturumlar sonlandırıldı');
+    } catch (e: unknown) {
+      console.error('signOutUser hatası:', e);
+      toast.error('Oturumlar sonlandırılamadı');
+    }
   }
 }
 
@@ -100,6 +131,15 @@ onMounted(() => {
       @ban="handleBan"
       @signout="handleSignOut"
     />
+
+    <BaseModal v-if="confirmCopy" @cancel="pendingAction = null">
+      <template #header>{{ confirmCopy.title }}</template>
+      <p>{{ confirmCopy.body }}</p>
+      <template #footer>
+        <button class="btn-ghost" @click="pendingAction = null">İptal</button>
+        <button class="btn-danger" @click="confirmPendingAction">{{ confirmCopy.confirmLabel }}</button>
+      </template>
+    </BaseModal>
   </div>
 </template>
 
