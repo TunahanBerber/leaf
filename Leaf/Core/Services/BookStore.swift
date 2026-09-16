@@ -340,6 +340,41 @@ final class BookStore: ObservableObject {
         }
     }
 
+    // MARK: - İstek Listesi → Kitaplığım
+
+    // updateBook zaten hem Supabase'i hem yerel state'i (books didSet ile
+    // library/wishlist'i) güncelliyor — burada sadece is_wishlist'i çeviriyoruz.
+    func moveToLibrary(_ book: Book) async {
+        guard book.isWishlist else { return }
+        var updated = book
+        updated.isWishlist = false
+        await updateBook(updated)
+    }
+
+    // MARK: - Kitap Bildirimi (aranıp bulunamayan kitaplar)
+
+    // Doğrudan tabloya insert yok — tek yazma yolu request_book RPC'si. Rate limit
+    // (60sn cooldown + 24 saatte 5 istek) sunucu tarafında (SECURITY DEFINER
+    // fonksiyon içinde) uygulanıyor, client bunu bypass edemez. Limit aşılırsa
+    // Postgres'in RAISE EXCEPTION mesajı error.localizedDescription'a düşüyor,
+    // kullanıcıya doğrudan onu gösteriyoruz.
+    func requestBook(title: String, author: String) async -> Bool {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty else { return false }
+
+        let trimmedAuthor = author.trimmingCharacters(in: .whitespacesAndNewlines)
+        var params: [String: AnyJSON] = ["p_title": .string(trimmedTitle)]
+        if !trimmedAuthor.isEmpty { params["p_author"] = .string(trimmedAuthor) }
+
+        do {
+            try await supabase.rpc("request_book", params: params).execute()
+            return true
+        } catch {
+            self.error = error.localizedDescription
+            return false
+        }
+    }
+
     // MARK: - Add Note
 
     func addNote(title: String, content: String, pageNumber: Int?, to bookId: String) async {
