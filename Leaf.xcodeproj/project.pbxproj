@@ -52,6 +52,7 @@
 		DB3BA865D1FD52AAB0AEB9EE /* LeafTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9A1DE7F581BDB87B5B2F264 /* LeafTokens.swift */; };
 		DC4E280B18AF653CFD450FA4 /* InboxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761251687E9AC2FE22D666C0 /* InboxView.swift */; };
 		E7770E6BA29F2657084B3F95 /* LeafColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF5F58CE52F17D5D8E4FEFA2 /* LeafColors.swift */; };
+		EAA59AF4BE3465E373F027DE /* TermsOfServiceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14644A1441B5DFBA711F4DE4 /* TermsOfServiceView.swift */; };
 		ECB275CB2B7CA420D02539F2 /* SupabaseAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62F3248C082FA82BE2D8BEAD /* SupabaseAuthService.swift */; };
 /* End PBXBuildFile section */
 
@@ -69,6 +70,7 @@
 		01366E83E4B52AE4476676A7 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		079B66E45437B83540285843 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		085D396B5556D97DF6B1F83E /* NetworkHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkHelper.swift; sourceTree = "<group>"; };
+		14644A1441B5DFBA711F4DE4 /* TermsOfServiceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TermsOfServiceView.swift; sourceTree = "<group>"; };
 		1EA517B139D86EF10EC8B5ED /* RevealablePhotoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevealablePhotoView.swift; sourceTree = "<group>"; };
 		223E8FA3CC52FC68DB8234AA /* DiscoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverView.swift; sourceTree = "<group>"; };
 		23ECD5275D541486CF1FB4FE /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -160,6 +162,7 @@
 				2D6D58237C7110E8FB133F24 /* PrivacyPolicyView.swift */,
 				7BBCBDF099E6A9EC850C0F75 /* ProfileSetupView.swift */,
 				079B66E45437B83540285843 /* SettingsView.swift */,
+				14644A1441B5DFBA711F4DE4 /* TermsOfServiceView.swift */,
 				F381B42281C77F096D06D912 /* UserProfileView.swift */,
 				E5BC193F592725B909CB26A7 /* WishlistView.swift */,
 			);
@@ -429,6 +432,7 @@
 				1CD3359E6CAF263C3FEDF50B /* SocialService.swift in Sources */,
 				ECB275CB2B7CA420D02539F2 /* SupabaseAuthService.swift in Sources */,
 				5339F4408583134672959BFA /* SupabaseConfig.swift in Sources */,
+				EAA59AF4BE3465E373F027DE /* TermsOfServiceView.swift in Sources */,
 				44AE453D4402980E34CC97C7 /* TurkishProvinces.swift in Sources */,
 				7E7D5C073CAB76AB3B2F94C8 /* UserProfileView.swift in Sources */,
 				4C2B184DD4EDAE1DA09940CE /* WishlistView.swift in Sources */,

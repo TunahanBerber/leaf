@@ -20,11 +20,18 @@ struct ProfileSetupView: View {
     @State private var selectedCity: String?
     @State private var showCityPicker = false
 
+    // Apple App Store 1.2 (UGC) uyumluluğu için hesap oluşturma anında açık onay
+    // gerekiyor — pasif bir Ayarlar linki yeterli görülmüyor. ProfileSetupView, auth
+    // yöntemi ne olursa olsun (email/şifre, Google, Apple) her yeni hesap için tek
+    // ve zorunlu geçiş noktası olduğundan onayı burada alıyoruz.
+    @State private var acceptedTerms = false
+    @State private var showTermsSheet = false
+
     private var age: Int? { Int(ageText) }
     private var isAdult: Bool { (age ?? 0) >= 18 }
 
     private var isFormValid: Bool {
-        guard username.trimmingCharacters(in: .whitespaces).count >= 3, (age ?? 0) >= 1 else {
+        guard acceptedTerms, username.trimmingCharacters(in: .whitespaces).count >= 3, (age ?? 0) >= 1 else {
             return false
         }
         guard isAdult else { return true }
@@ -40,6 +47,7 @@ struct ProfileSetupView: View {
                     header
                     if isAdult { photoPicker }
                     formCard
+                    termsConsentRow
                     createButton
                     Spacer(minLength: LeafSpacing.xxl)
                 }
@@ -62,6 +70,47 @@ struct ProfileSetupView: View {
         }
         .sheet(isPresented: $showCityPicker) {
             CityPickerSheet(selectedCity: $selectedCity)
+        }
+        .sheet(isPresented: $showTermsSheet) {
+            TermsOfServiceView()
+        }
+    }
+
+    // MARK: - Kullanım Koşulları Onayı
+
+    // "Kullanım Koşulları" linkini ayrı bir Button olarak dışarıda tutuyoruz — bir
+    // Button'un LABEL'ı içine .onTapGesture ile ikinci bir tıklanabilir eleman koymak
+    // SwiftUI'de hit-test çakışması yaratıyor (bkz. DiscoverView.cityFilterButton):
+    // iç dokunuş yerine dış Button'un kendi action'ı tetikleniyor.
+    private var termsConsentRow: some View {
+        HStack(alignment: .top, spacing: LeafSpacing.sm) {
+            Button {
+                acceptedTerms.toggle()
+            } label: {
+                Image(systemName: acceptedTerms ? "checkmark.square.fill" : "square")
+                    .font(.system(size: 20))
+                    .foregroundStyle(
+                        acceptedTerms
+                            ? LeafColors.accent(for: colorScheme)
+                            : LeafColors.textTertiary(for: colorScheme)
+                    )
+            }
+            .buttonStyle(.plain)
+
+            HStack(spacing: 4) {
+                Text("Kullanım Koşulları'nı okudum ve kabul ediyorum.")
+                    .font(.footnote)
+                    .foregroundStyle(LeafColors.textSecondary(for: colorScheme))
+                    .onTapGesture { acceptedTerms.toggle() }
+
+                Button("Oku") {
+                    showTermsSheet = true
+                }
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(LeafColors.accent(for: colorScheme))
+            }
+
+            Spacer(minLength: 0)
         }
     }
 

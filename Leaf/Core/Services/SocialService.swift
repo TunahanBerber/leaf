@@ -208,10 +208,14 @@ final class SocialService {
         isLoading = true
         defer { isLoading = false }
 
+        // ProfileSetupView, "Kullanım Koşulları'nı kabul ediyorum" onayı işaretlenmeden
+        // bu fonksiyonu hiç çağırtmıyor (isFormValid) — burada onay anını kanıt olarak
+        // kalıcı bir zaman damgasıyla yazıyoruz (App Store 1.2 uyumluluğu).
         var entry: [String: AnyJSON] = [
-            "id":       .string(userId),
-            "username": .string(username),
-            "age":      .double(Double(age))
+            "id":                .string(userId),
+            "username":          .string(username),
+            "age":               .double(Double(age)),
+            "terms_accepted_at": .string(ISO8601DateFormatter().string(from: Date()))
         ]
         if !bio.isEmpty { entry["bio"] = .string(bio) }
         if let gender { entry["gender"] = .string(gender.rawValue) }
