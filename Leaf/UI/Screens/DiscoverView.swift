@@ -630,6 +630,6 @@ private struct CountBadge: View {
             .padding(.horizontal, 4)
             .frame(minWidth: 16, minHeight: 16)
             .background(color, in: Capsule())
-            .offset(x: 5, y: -5)
+            .offset(x: 5, y: -1)
     }
 }
