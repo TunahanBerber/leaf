@@ -93,10 +93,24 @@ async function sendApns(
 
 Deno.serve(async (req) => {
   try {
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Bu fonksiyon sadece trigger_request_notification DB trigger'i tarafindan
+    // cagrilmali. Herkeste bulunan anon key ile dogrudan cagrilip baska
+    // kullanicilar adina sahte push gonderilmesini engellemek icin, sadece
+    // trigger'in bildigi paylasilan secret ile calisiyor.
+    const providedSecret = req.headers.get("x-webhook-secret");
+    const { data: secretRow } = await supabase
+      .from("internal_webhook_secrets")
+      .select("value")
+      .eq("key", "push_webhook_secret")
+      .maybeSingle();
+    if (!secretRow?.value || providedSecret !== secretRow.value) {
+      return new Response("unauthorized", { status: 401 });
+    }
+
     const { type, recipient_id, sender_username, conversation_id } =
       await req.json();
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     // Alıcının cihaz tokenini ve hangi APNs ortamından geldiğini çek
     const { data: tokenRow } = await supabase

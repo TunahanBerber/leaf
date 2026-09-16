@@ -36,13 +36,28 @@ Deno.serve(async (req) => {
     const callerId = userData.user.id;
 
     const { target_user_id: targetId } = (await req.json()) as { target_user_id?: string };
-    if (!targetId) {
-      return json({ error: "target_user_id gerekli" }, 400);
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!targetId || !UUID_RE.test(targetId)) {
+      // targetId asagida .or() ile ham bir PostgREST filtre string'ine gomuluyor;
+      // gecerli bir uuid oldugunu burada garanti etmezsek filtre enjeksiyonuna acik olur.
+      return json({ error: "target_user_id gecersiz" }, 400);
     }
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
+
+    // Normal kullanimi (kart acma, mesajlasma) hic etkilemeyecek kadar genis bir
+    // limit; amac scriptli reveal-stage enumeration'i engellemek.
+    const { data: withinLimit } = await admin.rpc("check_rate_limit", {
+      p_user_id: callerId,
+      p_action: "get_profile_photo",
+      p_max_count: 30,
+      p_window_seconds: 10,
+    });
+    if (withinLimit === false) {
+      return json({ error: "Çok fazla istek, birazdan tekrar deneyin" }, 429);
+    }
 
     const { data: targetProfile } = await admin
       .from("profiles")

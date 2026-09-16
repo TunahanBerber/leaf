@@ -11,6 +11,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
+const MAX_UPLOAD_BYTES = 15 * 1024 * 1024; // decode/blur oncesi DoS'a karsi ust sinir
 const MAX_DIMENSION = 800;   // BookStore.resizedAndCompressed ile aynı yaklaşım
 const BLUR_RADIUS = 14;      // "hafif blur" — kişi seçilebiliyor ama detaylar gizli
 const SIGNED_URL_TTL_SECONDS = 300; // get-profile-photo ile aynı süre
@@ -103,9 +104,30 @@ Deno.serve(async (req) => {
     }
     const uid = userData.user.id;
 
+    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    // Kullanicilar profil fotografini sik degistirmez; bu limit normal kullanimi
+    // etkilemeden art arda upload/CPU tuketimi (decode+blur) istismarini engelliyor.
+    const { data: withinLimit } = await admin.rpc("check_rate_limit", {
+      p_user_id: uid,
+      p_action: "process_profile_photo",
+      p_max_count: 5,
+      p_window_seconds: 60,
+    });
+    if (withinLimit === false) {
+      return json({ error: "Çok fazla istek, birazdan tekrar deneyin" }, 429);
+    }
+
     const rawBytes = new Uint8Array(await req.arrayBuffer());
     if (rawBytes.length === 0) {
       return json({ error: "Boş görsel" }, 400);
+    }
+    if (rawBytes.length > MAX_UPLOAD_BYTES) {
+      // Image.decode() boyut/format kontrolu olmadan calisiyordu; buyuk/bozuk
+      // payload'lar decode/blur asamasinda bellek/CPU tuketimine yol acabilirdi.
+      return json({ error: "Görsel çok büyük (maksimum 15MB)" }, 413);
     }
 
     const { jpeg: originalJpeg } = await resizedJpeg(rawBytes);
@@ -115,10 +137,6 @@ Deno.serve(async (req) => {
     const blurredImage = await Image.decode(originalJpeg);
     boxBlur(blurredImage, BLUR_RADIUS);
     const blurredJpeg = await blurredImage.encodeJPEG(80);
-
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
 
     const originalPath = `${uid}/original.jpg`;
     const blurredPath = `${uid}/blurred.jpg`;
