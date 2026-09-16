@@ -92,6 +92,13 @@ struct BookDetailView: View {
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    if book.isWishlist {
+                        Button {
+                            Task { await store.moveToLibrary(book) }
+                        } label: {
+                            Label("Kitaplığa Ekle", systemImage: "books.vertical")
+                        }
+                    }
                     Button { showEditBook = true } label: {
                         Label("Düzenle", systemImage: "pencil")
                     }

@@ -23,6 +23,13 @@ struct LibraryGridView: View {
                     }
                     .buttonStyle(PressStyle())
                     .contextMenu {
+                        if book.isWishlist {
+                            Button {
+                                Task { await store.moveToLibrary(book) }
+                            } label: {
+                                Label("Kitaplığa Ekle", systemImage: "books.vertical")
+                            }
+                        }
                         Button { bookToEdit = book } label: {
                             Label("Düzenle", systemImage: "pencil")
                         }
