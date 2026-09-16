@@ -36,8 +36,11 @@ Deno.serve(async (req) => {
     const callerId = userData.user.id;
 
     const { target_user_id: targetId } = (await req.json()) as { target_user_id?: string };
-    if (!targetId) {
-      return json({ error: "target_user_id gerekli" }, 400);
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!targetId || !UUID_RE.test(targetId)) {
+      // targetId asagida .or() ile ham bir PostgREST filtre string'ine gomuluyor;
+      // gecerli bir uuid oldugunu burada garanti etmezsek filtre enjeksiyonuna acik olur.
+      return json({ error: "target_user_id gecersiz" }, 400);
     }
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
