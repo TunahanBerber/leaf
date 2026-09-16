@@ -13,6 +13,20 @@ const supabaseAdmin = createClient(
 
 Deno.serve(async (req: Request) => {
   try {
+    // Bu fonksiyon sadece notify_push_on_message DB trigger'i tarafindan
+    // cagrilmali. Herkeste bulunan anon key ile dogrudan cagrilip baska
+    // kullanicilar adina sahte push gonderilmesini engellemek icin, sadece
+    // trigger'in bildigi paylasilan secret ile calisiyor.
+    const providedSecret = req.headers.get("x-webhook-secret");
+    const { data: secretRow } = await supabaseAdmin
+      .from("internal_webhook_secrets")
+      .select("value")
+      .eq("key", "push_webhook_secret")
+      .maybeSingle();
+    if (!secretRow?.value || providedSecret !== secretRow.value) {
+      return new Response("unauthorized", { status: 401 });
+    }
+
     const record = await req.json();
     const { sender_id, conversation_id, content } = record;
     if (!sender_id || !conversation_id || !content) {
