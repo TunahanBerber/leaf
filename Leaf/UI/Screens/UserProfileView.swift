@@ -27,6 +27,10 @@ struct UserProfileView: View {
                 }
                 .padding(.horizontal, LeafSpacing.md)
                 .padding(.top, LeafSpacing.lg)
+                // Yatay modda (ya da iPad'de) içerik ekranın tamamına
+                // gerilmesin diye genişliği sınırlayıp ortalıyoruz.
+                .frame(maxWidth: 480)
+                .frame(maxWidth: .infinity)
             }
         }
         .navigationTitle(profile.username)

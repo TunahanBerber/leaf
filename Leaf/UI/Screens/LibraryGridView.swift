@@ -10,8 +10,12 @@ struct LibraryGridView: View {
     @State private var bookToEdit: Book?
     @State private var bookToDelete: Book?
 
+    // maximum yoksa yatay modda (ya da iPad'de) genişleyen ekranda sütun sayısı
+    // yeterince artmayınca kalan boşluk mevcut sütunlara paylaşılıyor, kartlar
+    // olması gerekenden çok daha büyük görünüyordu. Üst sınır koyunca fazla
+    // genişlik yeni sütun açılarak karşılanıyor, kart boyutu sabit kalıyor.
     private let columns = [
-        GridItem(.adaptive(minimum: 160), spacing: LeafSpacing.md)
+        GridItem(.adaptive(minimum: 160, maximum: 200), spacing: LeafSpacing.md)
     ]
 
     var body: some View {

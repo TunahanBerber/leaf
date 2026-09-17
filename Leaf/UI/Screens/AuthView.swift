@@ -181,6 +181,10 @@ struct AuthView: View {
 
                     Spacer(minLength: 40)
                 }
+                // Yatay modda (ya da iPad'de) form kartı ekranın tamamına
+                // gerilmesin diye genişliği sınırlayıp ortalıyoruz.
+                .frame(maxWidth: 480)
+                .frame(maxWidth: .infinity)
             }
         }
         .alert("Sıfırlama Maili Gönderildi", isPresented: $showResetAlert) {

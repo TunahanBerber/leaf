@@ -54,6 +54,10 @@ struct ProfileSetupView: View {
                 .padding(.horizontal, LeafSpacing.md)
                 .padding(.top, LeafSpacing.xxxl)
                 .animation(.easeInOut(duration: 0.25), value: isAdult)
+                // Yatay modda (ya da iPad'de) form ekranın tamamına
+                // gerilmesin diye genişliği sınırlayıp ortalıyoruz.
+                .frame(maxWidth: 480)
+                .frame(maxWidth: .infinity)
             }
         }
         .alert("Yaş Sınırı", isPresented: $showUnderageAlert) {
