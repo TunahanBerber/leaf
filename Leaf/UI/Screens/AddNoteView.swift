@@ -102,6 +102,10 @@ struct AddNoteView: View {
                     .padding(.horizontal, LeafSpacing.md)
                     .padding(.top, LeafSpacing.md)
                     .padding(.bottom, LeafSpacing.xxxl)
+                    // Yatay modda (ya da iPad'de) form ekranın tamamına
+                    // gerilmesin diye genişliği sınırlayıp ortalıyoruz.
+                    .frame(maxWidth: 480)
+                    .frame(maxWidth: .infinity)
                 }
             }
             .navigationTitle("Not Ekle")

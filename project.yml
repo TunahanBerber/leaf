@@ -70,6 +70,8 @@ targets:
         NSCameraUsageDescription: "Kapak fotoğraflarını kameranızla çekebilmeniz için erişim gereklidir."
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
         UISupportedInterfaceOrientations~ipad:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationPortraitUpsideDown

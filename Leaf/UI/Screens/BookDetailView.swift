@@ -6,6 +6,7 @@ import SwiftUI
 struct BookDetailView: View {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.verticalSizeClass) private var vSizeClass
     @EnvironmentObject private var store: BookStore
     @Environment(SocialService.self) private var socialService
 
@@ -67,9 +68,16 @@ struct BookDetailView: View {
         ScrollView {
             VStack(spacing: 0) {
                 headerImage(book: book).padding(.bottom, LeafSpacing.lg)
-                infoCard(book: book).padding(.horizontal, LeafSpacing.md).padding(.bottom, LeafSpacing.lg)
-                progressCard(book: book).padding(.horizontal, LeafSpacing.md).padding(.bottom, LeafSpacing.lg)
-                notesSection(book: book).padding(.horizontal, LeafSpacing.md).padding(.bottom, LeafSpacing.xxxl)
+                Group {
+                    infoCard(book: book).padding(.bottom, LeafSpacing.lg)
+                    progressCard(book: book).padding(.bottom, LeafSpacing.lg)
+                    notesSection(book: book).padding(.bottom, LeafSpacing.xxxl)
+                }
+                .padding(.horizontal, LeafSpacing.md)
+                // Yatay modda (ya da iPad'de) içerik ekranın tamamına
+                // gerilmesin diye genişliği sınırlayıp ortalıyoruz.
+                .frame(maxWidth: 480)
+                .frame(maxWidth: .infinity)
             }
         }
         .scrollIndicators(.hidden)
@@ -126,8 +134,14 @@ struct BookDetailView: View {
     // MARK: - Kapak Başlık
     @ViewBuilder
     private func headerImage(book: Book) -> some View {
+        // Yatay modda (compact height) kapak görseli ekranın çoğunu
+        // kaplamasın diye yüksekliği azaltıyoruz.
+        let hasCover = book.coverImageUrl != nil
+        let height: CGFloat = vSizeClass == .compact
+            ? (hasCover ? 180 : 140)
+            : (hasCover ? 280 : 200)
         CoverImageView(coverUrl: book.coverImageUrl, placeholderIconSize: 48)
-            .frame(height: book.coverImageUrl != nil ? 280 : 200)
+            .frame(height: height)
             .clipShape(UnevenRoundedRectangle(
                 bottomLeadingRadius: LeafRadius.xlarge,
                 bottomTrailingRadius: LeafRadius.xlarge
