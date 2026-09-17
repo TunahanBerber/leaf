@@ -79,6 +79,10 @@ struct BookRecommendationSheet: View {
             .padding(.horizontal, LeafSpacing.md)
             .padding(.top, LeafSpacing.lg)
             .padding(.bottom, LeafSpacing.xxxl)
+            // Yatay modda (ya da iPad'de) içerik ekranın tamamına
+            // gerilmesin diye genişliği sınırlayıp ortalıyoruz.
+            .frame(maxWidth: 480)
+            .frame(maxWidth: .infinity)
         }
         .scrollIndicators(.hidden)
     }

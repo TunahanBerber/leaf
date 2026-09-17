@@ -3,6 +3,7 @@ import SwiftUI
 struct DiscoverView: View {
     @Environment(SocialService.self) var socialService
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.verticalSizeClass) private var vSizeClass
     @State private var navigateToProfile: UserProfile?
     // geçilen kullanıcılar bu oturumda destede tekrar görünmesin
     @State private var excludedIds: Set<String> = []
@@ -170,35 +171,66 @@ struct DiscoverView: View {
 
     // MARK: - Deste
 
+    // Yatay modda (compact height) dikey düzen — kart + Spacer'lar + altta
+    // butonlar — ekran yüksekliğine sığmayabiliyor. Bu yüzden yatayda kartı
+    // ve butonları yan yana koyup, taşma ihtimaline karşı kaydırılabilir
+    // hale getiriyoruz; dikeyde eski davranış aynen korunuyor.
     private var deckView: some View {
-        VStack(spacing: LeafSpacing.xl) {
-            Spacer(minLength: 0)
-
-            ZStack {
-                ForEach(stackedCards, id: \.user.id) { item in
-                    DiscoverStackCard(profile: item.user)
-                        .scaleEffect(1 - CGFloat(item.position) * 0.04)
-                        .offset(y: CGFloat(item.position) * 10)
-                        .opacity(item.position == 0 ? 1 : 0.55)
-                        .zIndex(Double(-item.position))
-                        .allowsHitTesting(item.position == 0)
-                        .onTapGesture { navigateToProfile = item.user }
+        Group {
+            if vSizeClass == .compact {
+                ScrollView(.vertical, showsIndicators: false) {
+                    HStack(spacing: LeafSpacing.xl) {
+                        deckStack
+                            .frame(maxWidth: .infinity)
+                        decisionButtons(axis: .vertical)
+                    }
+                    .padding(.horizontal, LeafSpacing.md)
+                    .padding(.vertical, LeafSpacing.lg)
+                    .frame(minHeight: 0)
                 }
+            } else {
+                VStack(spacing: LeafSpacing.xl) {
+                    Spacer(minLength: 0)
+                    deckStack
+                    Spacer(minLength: 0)
+                    decisionButtons(axis: .horizontal)
+                        .padding(.bottom, LeafSpacing.xl)
+                }
+                .padding(.horizontal, LeafSpacing.md)
             }
-            .animation(LeafMotion.spring, value: deck.map(\.id))
-
-            Spacer(minLength: 0)
-
-            decisionButtons
-                .padding(.bottom, LeafSpacing.xl)
         }
-        .padding(.horizontal, LeafSpacing.md)
     }
 
-    private var decisionButtons: some View {
-        HStack(spacing: LeafSpacing.xxl) {
-            decisionButton(icon: "xmark", tint: .red, action: pass)
-            decisionButton(icon: "checkmark", tint: LeafColors.accent(for: colorScheme), action: approve)
+    private var deckStack: some View {
+        ZStack {
+            ForEach(stackedCards, id: \.user.id) { item in
+                DiscoverStackCard(profile: item.user, compact: vSizeClass == .compact)
+                    .scaleEffect(1 - CGFloat(item.position) * 0.04)
+                    .offset(y: CGFloat(item.position) * 10)
+                    .opacity(item.position == 0 ? 1 : 0.55)
+                    .zIndex(Double(-item.position))
+                    .allowsHitTesting(item.position == 0)
+                    .onTapGesture { navigateToProfile = item.user }
+            }
+        }
+        .animation(LeafMotion.spring, value: deck.map(\.id))
+    }
+
+    private enum ButtonAxis { case horizontal, vertical }
+
+    private func decisionButtons(axis: ButtonAxis) -> some View {
+        Group {
+            if axis == .vertical {
+                VStack(spacing: LeafSpacing.xxl) {
+                    decisionButton(icon: "xmark", tint: .red, action: pass)
+                    decisionButton(icon: "checkmark", tint: LeafColors.accent(for: colorScheme), action: approve)
+                }
+            } else {
+                HStack(spacing: LeafSpacing.xxl) {
+                    decisionButton(icon: "xmark", tint: .red, action: pass)
+                    decisionButton(icon: "checkmark", tint: LeafColors.accent(for: colorScheme), action: approve)
+                }
+            }
         }
         .disabled(isSubmitting)
     }
@@ -267,11 +299,12 @@ struct DiscoverView: View {
 
 struct DiscoverStackCard: View {
     let profile: UserProfile
+    var compact: Bool = false
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
         GlassCard {
-            VStack(spacing: LeafSpacing.lg) {
+            VStack(spacing: compact ? LeafSpacing.sm : LeafSpacing.lg) {
                 avatar
 
                 VStack(spacing: LeafSpacing.xxs) {
@@ -318,13 +351,13 @@ struct DiscoverStackCard: View {
                             .font(.subheadline)
                             .foregroundStyle(LeafColors.textSecondary(for: colorScheme))
                             .multilineTextAlignment(.center)
-                            .lineLimit(3)
+                            .lineLimit(compact ? 2 : 3)
                     }
                 }
 
                 if let books = profile.commonBookTitles, !books.isEmpty {
                     VStack(alignment: .leading, spacing: LeafSpacing.xs) {
-                        ForEach(books.prefix(3), id: \.self) { title in
+                        ForEach(books.prefix(compact ? 2 : 3), id: \.self) { title in
                             Label(title, systemImage: "book.fill")
                                 .font(.caption.weight(.medium))
                                 .foregroundStyle(LeafColors.accent(for: colorScheme))
@@ -334,7 +367,7 @@ struct DiscoverStackCard: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
-            .padding(LeafSpacing.xl)
+            .padding(compact ? LeafSpacing.lg : LeafSpacing.xl)
             .frame(maxWidth: .infinity)
         }
         .frame(maxWidth: 340)
@@ -346,7 +379,7 @@ struct DiscoverStackCard: View {
     // gösterilir, reveal ikonu çıkmaz (o sadece gerçek bir sohbette anlamlı).
     // Foto hiç yoksa RevealablePhotoView kendi silüet placeholder'ını gösterir.
     private var avatar: some View {
-        RevealablePhotoView(userId: profile.id, size: 96)
+        RevealablePhotoView(userId: profile.id, size: compact ? 64 : 96)
     }
 }
 
