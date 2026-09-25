@@ -500,10 +500,19 @@ final class SocialService {
             // blocked_users tablosuna gidip tekrar filtrelemek gereksiz bir
             // network round-trip'iydi, kaldırdık.
 
-            // Fotoğraf durumlarını liste ekrana yansımadan ÖNCE önbelleğe alıyoruz —
-            // yoksa kartlar önce boş avatarla render olup fotoğraf sonradan "patlıyor".
-            await prefetchPhotoReveals(for: users.map(\.id))
+            // Destede aynı anda en fazla 3 kart görünüyor — TÜM listenin fotoğrafını
+            // bekletmek (bazen onlarca kullanıcı) Keşfet'e girişte gereksiz uzun bir
+            // spinner'a yol açıyordu. Sadece ilk görünecek birkaç kartın fotoğrafını
+            // ekrana yansımadan önce (pop-in olmasın diye) bekliyoruz; geri kalanı
+            // liste zaten ekrandayken arka planda tazeleniyor.
+            let visibleIds = Array(users.prefix(5).map(\.id))
+            await prefetchPhotoReveals(for: visibleIds)
             discoveredUsers = users
+
+            let remainingIds = Array(users.dropFirst(5).map(\.id))
+            if !remainingIds.isEmpty {
+                Task { await self.prefetchPhotoReveals(for: remainingIds) }
+            }
         } catch {
             self.error = "Kullanıcılar yüklenemedi."
             print("[SocialService] discoverUsers error: \(error)")
@@ -566,7 +575,13 @@ final class SocialService {
                 .execute()
                 .value
 
-            await prefetchPhotoReveals(for: ids)
+            // Bu liste sadece "Gizlediklerim" panelini (ayrı bir sheet) besliyor —
+            // Keşfet'e girişte tek ihtiyacımız toolbar rozetindeki sayı, fotoğraf
+            // değil. Fotoğraf prefetch'ini arka plana alarak Keşfet'in ana akışını
+            // (discoverUsers ile aynı anda çalışıyor) bloke etmesini önlüyoruz —
+            // panel gerçekten açıldığında RevealablePhotoView zaten kendi başına
+            // yükler, en kötü ihtimalle o an bir tık gecikme olur.
+            Task { await self.prefetchPhotoReveals(for: ids) }
             // swipes'tan gelen (en yeni pas geçilen en üstte) sırayı koruyoruz —
             // profiles sorgusu bu sırayı garanti etmiyor.
             let profileMap = Dictionary(uniqueKeysWithValues: profiles.map { ($0.id, $0.toUserProfile()) })
@@ -752,7 +767,11 @@ final class SocialService {
                 }
             }
 
-            await prefetchPhotoReveals(for: receiverIds)
+            // Aynı gerekçe: "Gönderdiklerim" panelinin fotoğrafları burada değil,
+            // panel açıldığında lazım — Keşfet girişinde toolbar rozeti için sadece
+            // sayıya ihtiyacımız var, prefetch'i arka plana alıp ana akışı (discoverUsers
+            // ile eşzamanlı) bloke etmiyoruz.
+            Task { await self.prefetchPhotoReveals(for: receiverIds) }
             sentRequests = requests
         } catch {
             self.error = "Gönderilen istekler yüklenemedi."
