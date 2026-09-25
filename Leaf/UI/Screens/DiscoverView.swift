@@ -3,19 +3,20 @@ import SwiftUI
 struct DiscoverView: View {
     @Environment(SocialService.self) var socialService
     @Environment(\.colorScheme) var colorScheme
-    @Environment(\.verticalSizeClass) private var vSizeClass
-    @State private var navigateToProfile: UserProfile?
-    // geçilen kullanıcılar bu oturumda destede tekrar görünmesin
+    // geçilen/gizlenen kullanıcılar bu oturumda vitrinde tekrar görünmesin
     @State private var excludedIds: Set<String> = []
-    @State private var isSubmitting = false
     @State private var showSentRequests = false
     @State private var showCityFilter = false
     @State private var showPassedUsers = false
     @State private var cityFilter: String?
     // Gizlediklerim panelinde gerçekten "Geri Getir" denip denmediğini takip
-    // ediyoruz — sadece açıp kapatmak deste'yi yeniden çekmeye değmez,
+    // ediyoruz — sadece açıp kapatmak listeyi yeniden çekmeye değmez,
     // gereksiz bir istek olurdu. Sadece bir şey değiştiyse tazeliyoruz.
     @State private var passedListChanged = false
+
+    private let columns = [
+        GridItem(.adaptive(minimum: 150, maximum: 190), spacing: LeafSpacing.md)
+    ]
 
     // zaten sohbeti olan kullanıcılar
     private var matchedUserIds: Set<String> {
@@ -24,19 +25,11 @@ struct DiscoverView: View {
     }
 
     // uygulama yeniden başlatılsa bile zaten istek gönderilmiş veya sohbeti
-    // olan kullanıcılar deste yeniden dolduğunda tekrar önümüze gelmesin
-    private var deck: [UserProfile] {
+    // olan kullanıcılar vitrin yeniden dolduğunda tekrar önümüze gelmesin
+    private var discoverList: [UserProfile] {
         let requestedIds = Set(socialService.sentRequests.map(\.receiverId))
         let excluded = excludedIds.union(requestedIds).union(matchedUserIds)
         return socialService.discoveredUsers.filter { !excluded.contains($0.id) }
-    }
-
-    // en üstteki 3 kart, alttan üste çizilecek sırada (0 = en üstte, en önde)
-    private var stackedCards: [(position: Int, user: UserProfile)] {
-        deck.prefix(3)
-            .enumerated()
-            .map { (position: $0.offset, user: $0.element) }
-            .reversed()
     }
 
     var body: some View {
@@ -48,10 +41,10 @@ struct DiscoverView: View {
                     if socialService.isLoadingDiscover {
                         ProgressView()
                             .tint(LeafColors.accent(for: colorScheme))
-                    } else if deck.isEmpty {
+                    } else if discoverList.isEmpty {
                         emptyState
                     } else {
-                        deckView
+                        gridView
                     }
                 }
             }
@@ -74,14 +67,12 @@ struct DiscoverView: View {
                 async let passed: () = socialService.fetchPassedUsers()
                 _ = await (sent, passed)
             }
-            // cityFilter değiştiğinde deste yeniden çekiliyor — discoverUsers
-            // zaten listeyi ekrana yansıtmadan önce fotoğrafları kendi içinde
-            // önbelleğe alıyor (SocialService), burada ayrıca bir şey gerekmiyor.
+            // cityFilter değiştiğinde vitrin yeniden çekiliyor — discoverUsers
+            // zaten listeyi ekrana yansıtmadan önce ilk görünecek fotoğrafları
+            // kendi içinde önbelleğe alıyor (SocialService), burada ayrıca bir
+            // şey gerekmiyor.
             .task(id: cityFilter) {
                 await socialService.discoverUsers(cityFilter: cityFilter)
-            }
-            .navigationDestination(item: $navigateToProfile) { profile in
-                UserProfileView(profile: profile)
             }
             .sheet(isPresented: $showSentRequests) {
                 SentRequestsSheet()
@@ -89,7 +80,7 @@ struct DiscoverView: View {
             .sheet(isPresented: $showCityFilter) {
                 CityPickerSheet(selectedCity: $cityFilter)
             }
-            // Sadece gerçekten "Geri Getir" denildiyse deste'yi yeniden çekiyoruz
+            // Sadece gerçekten "Geri Getir" denildiyse vitrini yeniden çekiyoruz
             // (o kişi discover_users()'ta ancak swipes kaydı silindikten SONRA
             // tekrar görünür oluyor). Sırf açıp kapatmak bir istek atmıyor.
             .sheet(isPresented: $showPassedUsers, onDismiss: {
@@ -169,111 +160,37 @@ struct DiscoverView: View {
         }
     }
 
-    // MARK: - Deste
+    // MARK: - Vitrin (Grid)
 
-    // Yatay modda (compact height) dikey düzen — kart + Spacer'lar + altta
-    // butonlar — ekran yüksekliğine sığmayabiliyor. Bu yüzden yatayda kartı
-    // ve butonları yan yana koyup, taşma ihtimaline karşı kaydırılabilir
-    // hale getiriyoruz; dikeyde eski davranış aynen korunuyor.
-    private var deckView: some View {
-        Group {
-            if vSizeClass == .compact {
-                ScrollView(.vertical, showsIndicators: false) {
-                    HStack(spacing: LeafSpacing.xl) {
-                        deckStack
-                            .frame(maxWidth: .infinity)
-                        decisionButtons(axis: .vertical)
-                    }
-                    .padding(.horizontal, LeafSpacing.md)
-                    .padding(.vertical, LeafSpacing.lg)
-                    .frame(minHeight: 0)
-                }
-            } else {
-                VStack(spacing: LeafSpacing.xl) {
-                    Spacer(minLength: 0)
-                    deckStack
-                    Spacer(minLength: 0)
-                    decisionButtons(axis: .horizontal)
-                        .padding(.bottom, LeafSpacing.xl)
-                }
-                .padding(.horizontal, LeafSpacing.md)
-            }
-        }
-    }
-
-    private var deckStack: some View {
-        ZStack {
-            ForEach(stackedCards, id: \.user.id) { item in
-                DiscoverStackCard(profile: item.user, compact: vSizeClass == .compact)
-                    .scaleEffect(1 - CGFloat(item.position) * 0.04)
-                    .offset(y: CGFloat(item.position) * 10)
-                    .opacity(item.position == 0 ? 1 : 0.55)
-                    .zIndex(Double(-item.position))
-                    .allowsHitTesting(item.position == 0)
-                    .onTapGesture { navigateToProfile = item.user }
-            }
-        }
-        .animation(LeafMotion.spring, value: deck.map(\.id))
-    }
-
-    private enum ButtonAxis { case horizontal, vertical }
-
-    private func decisionButtons(axis: ButtonAxis) -> some View {
-        Group {
-            if axis == .vertical {
-                VStack(spacing: LeafSpacing.xxl) {
-                    decisionButton(icon: "xmark", tint: .red, action: pass)
-                    decisionButton(icon: "checkmark", tint: LeafColors.accent(for: colorScheme), action: approve)
-                }
-            } else {
-                HStack(spacing: LeafSpacing.xxl) {
-                    decisionButton(icon: "xmark", tint: .red, action: pass)
-                    decisionButton(icon: "checkmark", tint: LeafColors.accent(for: colorScheme), action: approve)
+    // Kart destesi + X/✓ modelinden kitaplık rafı gibi taranabilir bir
+    // vitrine geçildi — aynı anda birden çok kişi görünür, karar (ilgileniyorum/
+    // gizle) artık burada değil, karta dokunup tam profile girince veriliyor
+    // (bkz. UserProfileView). LibraryGridView'daki adaptive grid ile aynı
+    // deseni kullanıyoruz: maximum sınırı sayesinde yatay modda (ya da
+    // iPad'de) kartlar büyümek yerine yeni sütun açılıyor.
+    private var gridView: some View {
+        ScrollView {
+            LazyVGrid(columns: columns, spacing: LeafSpacing.lg) {
+                ForEach(discoverList) { user in
+                    gridCell(for: user)
                 }
             }
+            .padding(.horizontal, LeafSpacing.md)
+            .padding(.top, LeafSpacing.xs)
+            .padding(.bottom, LeafSpacing.xxxl)
         }
-        .disabled(isSubmitting)
+        .scrollIndicators(.hidden)
     }
 
-    private func decisionButton(icon: String, tint: Color, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: icon)
-                .font(.title2.weight(.bold))
-                .foregroundStyle(tint)
-                .frame(width: 64, height: 64)
-                .background(.ultraThinMaterial, in: Circle())
-                .overlay {
-                    Circle().strokeBorder(tint.opacity(0.3), lineWidth: 1)
-                }
-                .shadow(color: .black.opacity(0.08), radius: 10, y: 4)
+    @ViewBuilder
+    private func gridCell(for user: UserProfile) -> some View {
+        let destination = UserProfileView(profile: user, onPassed: {
+            withAnimation(LeafMotion.spring) { _ = excludedIds.insert(user.id) }
+        })
+        NavigationLink(destination: destination) {
+            DiscoverProfileTile(profile: user)
         }
-    }
-
-    private func pass() {
-        guard let user = deck.first else { return }
-        withAnimation(LeafMotion.spring) {
-            excludedIds.insert(user.id)
-        }
-        // Eskiden sadece bu oturumda (bellekte) geçerliydi — kapatıp açınca
-        // aynı kişi tekrar karşına çıkıyordu. Artık kalıcı: record_swipe
-        // (liked:false) sayesinde geri getirmediğin sürece bir daha hiç
-        // çıkmıyor, GizlediklerimSheet'ten istediğin zaman geri getirebiliyorsun.
-        // recordPass tüm profili alıyor ki Gizlediklerim listesine ekstra bir
-        // ağ isteği atmadan, doğrudan bellekte ekleyebilsin.
-        Task { await socialService.recordPass(user) }
-    }
-
-    private func approve() {
-        guard let user = deck.first else { return }
-        isSubmitting = true
-        Task {
-            _ = await socialService.sendConversationRequest(to: user.id)
-            await socialService.fetchSentRequests()
-            isSubmitting = false
-            withAnimation(LeafMotion.spring) {
-                excludedIds.insert(user.id)
-            }
-        }
+        .buttonStyle(PressStyle())
     }
 
     // MARK: - Empty State
@@ -295,91 +212,75 @@ struct DiscoverView: View {
     }
 }
 
-// MARK: - Discover Stack Card
+// MARK: - Discover Profile Tile
 
-struct DiscoverStackCard: View {
+// Kitaplık rafındaki kitap kartlarıyla aynı dil: dikey, foto-öncelikli,
+// köşeleri yuvarlak. Kimlik bilgisi fotoğrafın üstünde bir gradyan
+// scrim ile veriliyor — ayrı bir beyaz panel gerekmiyor, karar butonları da
+// yok (tıklayınca tam profile gidiliyor, ilgileniyorum/gizle orada).
+struct DiscoverProfileTile: View {
     let profile: UserProfile
-    var compact: Bool = false
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
-        GlassCard {
-            VStack(spacing: compact ? LeafSpacing.sm : LeafSpacing.lg) {
-                avatar
+        ZStack(alignment: .bottomLeading) {
+            RevealablePhotoView(
+                userId: profile.id,
+                fillFrame: true,
+                cornerRadius: LeafRadius.large,
+                enablesTapToExpand: false
+            )
 
-                VStack(spacing: LeafSpacing.xxs) {
-                    HStack(spacing: LeafSpacing.xxs) {
-                        Text(profile.username)
-                            .font(.title2.bold())
-                            .foregroundStyle(LeafColors.textPrimary(for: colorScheme))
-                        if let age = profile.age {
-                            Text("\(age)")
-                                .font(.title3)
-                                .foregroundStyle(LeafColors.textTertiary(for: colorScheme))
-                        }
-                    }
+            LinearGradient(
+                colors: [.clear, .black.opacity(0.05), .black.opacity(0.72)],
+                startPoint: .center,
+                endPoint: .bottom
+            )
+            .allowsHitTesting(false)
 
-                    // Cinsiyet + şehir — discover_users RPC'si bunları zaten
-                    // dönüyordu ama kartta hiç gösterilmiyordu.
-                    if profile.gender != nil || profile.city != nil {
-                        HStack(spacing: LeafSpacing.xs) {
-                            if let genderName = Gender(rawValue: profile.gender ?? "")?.displayName {
-                                Text(genderName)
-                            }
-                            if let city = profile.city {
-                                if profile.gender != nil {
-                                    Text("·").foregroundStyle(LeafColors.textTertiary(for: colorScheme))
-                                }
-                                Label(city, systemImage: "mappin.and.ellipse")
-                                    .labelStyle(.titleAndIcon)
-                            }
-                            if profile.sameCity == true {
-                                Text("Aynı Şehir")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.white)
-                                    .padding(.horizontal, LeafSpacing.xs)
-                                    .padding(.vertical, 2)
-                                    .background(LeafColors.accent(for: colorScheme), in: Capsule())
-                            }
-                        }
-                        .font(.subheadline)
-                        .foregroundStyle(LeafColors.textSecondary(for: colorScheme))
-                    }
-
-                    if let bio = profile.bio, !bio.isEmpty {
-                        Text(bio)
-                            .font(.subheadline)
-                            .foregroundStyle(LeafColors.textSecondary(for: colorScheme))
-                            .multilineTextAlignment(.center)
-                            .lineLimit(compact ? 2 : 3)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(profile.username)
+                        .font(.system(size: 15, weight: .bold))
+                        .lineLimit(1)
+                    if let age = profile.age {
+                        Text("\(age)")
+                            .font(.system(size: 13))
+                            .opacity(0.85)
                     }
                 }
+                .foregroundStyle(.white)
 
-                if let books = profile.commonBookTitles, !books.isEmpty {
-                    VStack(alignment: .leading, spacing: LeafSpacing.xs) {
-                        ForEach(books.prefix(compact ? 2 : 3), id: \.self) { title in
-                            Label(title, systemImage: "book.fill")
-                                .font(.caption.weight(.medium))
-                                .foregroundStyle(LeafColors.accent(for: colorScheme))
-                                .lineLimit(1)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
+                Text(subtitle)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.white.opacity(0.85))
+                    .lineLimit(1)
             }
-            .padding(compact ? LeafSpacing.lg : LeafSpacing.xl)
-            .frame(maxWidth: .infinity)
+            .padding(LeafSpacing.sm)
         }
-        .frame(maxWidth: 340)
+        .overlay(alignment: .topTrailing) {
+            if profile.sameCity == true {
+                Text("AYNI ŞEHİR")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, LeafSpacing.xs)
+                    .padding(.vertical, 3)
+                    .background(LeafColors.accent(for: colorScheme), in: Capsule())
+                    .padding(LeafSpacing.xs)
+            }
+        }
+        .aspectRatio(3.0/4.0, contentMode: .fit)
+        .clipShape(RoundedRectangle(cornerRadius: LeafRadius.large, style: .continuous))
+        .shadow(color: .black.opacity(0.12), radius: 10, y: 5)
     }
 
-    // MARK: - Avatar
-
-    // Henüz sohbet yok (conversationId verilmiyor) — foto varsa bulanık önizleme
-    // gösterilir, reveal ikonu çıkmaz (o sadece gerçek bir sohbette anlamlı).
-    // Foto hiç yoksa RevealablePhotoView kendi silüet placeholder'ını gösterir.
-    private var avatar: some View {
-        RevealablePhotoView(userId: profile.id, size: compact ? 64 : 96)
+    private var subtitle: String {
+        var parts: [String] = []
+        if let city = profile.city { parts.append(city) }
+        if let books = profile.commonBookTitles, !books.isEmpty {
+            parts.append("\(books.count) ortak kitap")
+        }
+        return parts.isEmpty ? " " : parts.joined(separator: " · ")
     }
 }
 

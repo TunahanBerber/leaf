@@ -57,6 +57,19 @@ struct RevealablePhotoView: View {
     let userId: String
     var conversationId: String? = nil
     var size: CGFloat = 56
+    // Keşfet'teki kitaplık-vitrini kartları gibi dikdörtgen, tam-kaplayan
+    // kullanımlar için — true olunca dairesel sabit-boyut avatar yerine,
+    // CoverImageView'daki gibi dışarıdan verilen frame'i (ör. grid hücresinin
+    // genişliği + aspectRatio) tamamen dolduran yuvarlak köşeli bir dikdörtgen
+    // çiziyoruz. Varsayılan false — mevcut tüm çağrılar eski dairesel
+    // davranışı aynen koruyor.
+    var fillFrame: Bool = false
+    var cornerRadius: CGFloat = 0
+    // Vitrin kartı gibi zaten bir NavigationLink/Button'un içindeyse, buradaki
+    // "dokununca büyüt" jesti dış tıklamayla çakışıp onu yutuyordu (bkz.
+    // DiscoverView.cityFilterButton'daki aynı hit-test notu) — o durumda false
+    // veriyoruz, büyütme sadece profil ekranındaki tekil kullanımda kalıyor.
+    var enablesTapToExpand: Bool = true
 
     @Environment(SocialService.self) var social
     @Environment(\.colorScheme) var colorScheme
@@ -88,24 +101,51 @@ struct RevealablePhotoView: View {
         }
     }
 
-    var body: some View {
-        ZStack {
-            if let loadedImage {
-                Image(uiImage: loadedImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
+    private var clipShape: AnyShape {
+        fillFrame
+            ? AnyShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            : AnyShape(Circle())
+    }
+
+    @ViewBuilder
+    private var sizedContent: some View {
+        Group {
+            if fillFrame {
+                // CoverImageView'daki gibi — dışarıdan gelen frame'i (grid
+                // hücresi genişliği + aspectRatio) GeometryReader ile ölçüp
+                // görseli tam o boyuta oturtuyoruz.
+                GeometryReader { geo in
+                    photoContent
+                        .frame(width: geo.size.width, height: geo.size.height)
+                }
             } else {
-                silhouette
+                photoContent
+                    .frame(width: size, height: size)
             }
         }
-        .frame(width: size, height: size)
-        .clipShape(Circle())
-        .contentShape(Circle())
-        // WhatsApp'taki gibi: avatara dokunca büyük gösteriyoruz, "blur'u kaldır"
-        // isteği o büyük görünümdeki buton üzerinden gidiyor — avatarın üzerinde
-        // ayrıca bir rozet/ikon yok.
-        .onTapGesture {
-            if hasVisibleImage { showDetail = true }
+        .clipShape(clipShape)
+        .contentShape(clipShape)
+    }
+
+    var body: some View {
+        Group {
+            // .onTapGesture, action'ı boş olsa bile bir gesture recognizer
+            // iliştirir ve bunu dışarıdaki bir NavigationLink/Button'un kendi
+            // dokunuşundan ÖNCE yutar (bkz. DiscoverView.cityFilterButton'daki
+            // aynı not) — o yüzden enablesTapToExpand false'ken modifier'ı hiç
+            // eklemiyoruz, sadece action'ı boşaltmak yetmiyor.
+            if enablesTapToExpand {
+                sizedContent
+                    // WhatsApp'taki gibi: avatara dokunca büyük gösteriyoruz,
+                    // "blur'u kaldır" isteği o büyük görünümdeki buton
+                    // üzerinden gidiyor — avatarın üzerinde ayrıca bir
+                    // rozet/ikon yok.
+                    .onTapGesture {
+                        if hasVisibleImage { showDetail = true }
+                    }
+            } else {
+                sizedContent
+            }
         }
         .task(id: "\(userId)-\(conversationId ?? "")") { await load() }
         .task(id: derivedPath) { await loadImageIfNeeded() }
@@ -128,12 +168,23 @@ struct RevealablePhotoView: View {
         }
     }
 
+    @ViewBuilder
+    private var photoContent: some View {
+        if let loadedImage {
+            Image(uiImage: loadedImage)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+        } else {
+            silhouette
+        }
+    }
+
     private var silhouette: some View {
-        Circle()
+        Rectangle()
             .fill(LeafColors.accent(for: colorScheme).opacity(0.15))
             .overlay {
                 Image(systemName: "person.fill")
-                    .font(.system(size: size * 0.4))
+                    .font(.system(size: fillFrame ? 64 : size * 0.4))
                     .foregroundStyle(LeafColors.accent(for: colorScheme))
             }
     }
