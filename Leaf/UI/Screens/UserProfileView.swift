@@ -2,11 +2,16 @@ import SwiftUI
 
 struct UserProfileView: View {
     let profile: UserProfile
+    // Keşfet vitrininden açıldıysa dolu gelir — "Gizle" başarılı olunca
+    // DiscoverView kendi listesinden bu kişiyi düşürebilsin diye.
+    var onPassed: (() -> Void)? = nil
     @Environment(SocialService.self) var socialService
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.dismiss) var dismiss
 
     @State private var requestStatus: String? = nil   // nil | "pending" | "accepted"
     @State private var isLoading = false
+    @State private var isPassing = false
     @State private var existingConvId: String?        // yüklenen mevcut sohbet ID'si (navigation tetiklemez)
     @State private var navigateToConvId: String?      // sadece kullanıcı butona basınca set edilir
     @State private var showSuccess = false
@@ -38,6 +43,13 @@ struct UserProfileView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    if onPassed != nil {
+                        Button {
+                            Task { await pass() }
+                        } label: {
+                            Label("Gizle", systemImage: "eye.slash")
+                        }
+                    }
                     Button(role: .destructive) {
                         showBlockConfirm = true
                     } label: {
@@ -252,5 +264,19 @@ struct UserProfileView: View {
         }
         // pending istek var mı?
         requestStatus = await socialService.checkRequestStatus(to: profile.id)
+    }
+
+    // Keşfet vitrininden gizle — record_swipe (liked:false) kalıcı, kişi
+    // Gizlediklerim'den geri getirilene kadar bir daha çıkmıyor. Aynı
+    // DiscoverView'ın eski pass() mantığı, sadece artık tam profildeyiz.
+    private func pass() async {
+        guard !isPassing else { return }
+        isPassing = true
+        let ok = await socialService.recordPass(profile)
+        isPassing = false
+        if ok {
+            onPassed?()
+            dismiss()
+        }
     }
 }
